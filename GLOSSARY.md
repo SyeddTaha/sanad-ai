@@ -55,3 +55,19 @@ _Avoid_: Notice-supplied key list
 **Notice Revocation**:
 The withdrawal of a Signed Notice's active standing, tracked separately from its signature validity and expiry. It is independent of a Citizen's Consent Withdrawal.
 _Avoid_: Signature failure, consent revocation
+
+**Rule Version**:
+An immutable published set of SANAD eligibility and routing rules applicable to new Assessments. Earlier Assessments retain the Rule Version under which they were made.
+_Avoid_: Overwritten policy
+
+**Assessment**:
+An immutable evaluation of a Case's evidence under a particular Rule Version, preserving its findings, evidence and source references, timestamps, and applicable AI model and prompt versions. A new evaluation creates another Assessment rather than replacing the earlier one.
+_Avoid_: Overall verification verdict
+
+**Pending Consent**:
+The state of an open Case awaiting valid department-sharing authorization, with its history preserved. It is separate from withdrawal of an independent helper grant.
+_Avoid_: Rejected case
+
+**Case Resolution**:
+A Department Officer's reasoned disposition of a Case, based on a fresh Assessment and valid authorization. It establishes neither relief payment completion nor eligibility approval.
+_Avoid_: Payment approval, eligibility approval
