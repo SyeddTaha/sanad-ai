@@ -83,3 +83,15 @@ _Avoid_: Payment authorization service
 **Mock Program Data Service**:
 The source of synthetic program records and eligibility inputs used in SANAD Assessments.
 _Avoid_: Government records integration
+
+**Citizen Draft**:
+Unsent notice or dispute input held in the active Citizen's session, separate from the Case lifecycle. An in-memory draft is not safely persisted and may disappear when the tab closes or reloads.
+_Avoid_: Offline-saved case
+
+**Shared-Phone Session**:
+The active Citizen context on a phone used to assist multiple families, with private views, draft input, and audio isolated from other Citizens. Switching Citizens ends the previous private context rather than carrying its evidence or consent into the next one.
+_Avoid_: Shared citizen account
+
+**Urdu Audio Guidance**:
+Spoken instructions and case information supporting a Citizen's primary workflow without requiring reading. Fixed prerecorded instructions are distinct from AI voice functionality, and case-specific narration reflects only validated, server-authoritative findings.
+_Avoid_: AI voice feature for prerecorded instructions
