@@ -10,6 +10,18 @@ export const ConsentRecipientTypeSchema = z.enum(["PRINCIPAL", "DEPARTMENT", "AI
 // Disclosed purpose catalog awaits freeze; no invented production purpose enum.
 export const ConsentPurposeSchema = ReferenceSchema;
 
+// TimestampSchema supplies fixed-width UTC seconds and optional fractional digits.
+// Date.parse would discard precision beyond milliseconds during shape validation.
+function compareTimestamps(left: string, right: string): number {
+  const [leftSecond, leftFraction = ""] = left.slice(0, -1).split(".");
+  const [rightSecond, rightFraction = ""] = right.slice(0, -1).split(".");
+  if (leftSecond !== rightSecond) return leftSecond < rightSecond ? -1 : 1;
+  const precision = Math.max(leftFraction.length, rightFraction.length);
+  const leftDigits = leftFraction.padEnd(precision, "0");
+  const rightDigits = rightFraction.padEnd(precision, "0");
+  return leftDigits === rightDigits ? 0 : leftDigits < rightDigits ? -1 : 1;
+}
+
 export const ConsentGrantSchema = z.strictObject({
   id: IdSchema,
   caseId: IdSchema,
@@ -23,9 +35,9 @@ export const ConsentGrantSchema = z.strictObject({
   revokedAt: TimestampSchema.nullable(),
   createdAt: TimestampSchema,
   version: VersionSchema,
-}).refine((grant) => Date.parse(grant.expiresAt) > Date.parse(grant.createdAt), {
+}).refine((grant) => compareTimestamps(grant.expiresAt, grant.createdAt) > 0, {
   path: ["expiresAt"], message: "Expiry must follow creation",
-}).refine((grant) => grant.revokedAt === null || Date.parse(grant.revokedAt) >= Date.parse(grant.createdAt), {
+}).refine((grant) => grant.revokedAt === null || compareTimestamps(grant.revokedAt, grant.createdAt) >= 0, {
   path: ["revokedAt"], message: "Withdrawal cannot precede creation",
 });
 

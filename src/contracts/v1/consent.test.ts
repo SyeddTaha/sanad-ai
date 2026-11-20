@@ -28,3 +28,15 @@ test("grant shapes reject empty or duplicate scopes and impossible grant chronol
     { expiresAt: "2026-11-22T13:00Z" }, { active: true },
   ]) assert.equal(ConsentGrantSchema.safeParse({ ...helperGrantFixture, ...patch }).success, false);
 });
+
+test("grant chronology preserves RFC3339 fractional precision instead of rounding to milliseconds", () => {
+  const input = {
+    ...helperGrantFixture,
+    createdAt: "2026-11-21T08:00:00.000000001Z",
+    expiresAt: "2026-11-21T08:00:00.000000002Z",
+  };
+  assert.deepEqual(ConsentGrantSchema.parse(input), input);
+  assert.equal(ConsentGrantSchema.safeParse({
+    ...input, revokedAt: "2026-11-21T08:00:00.000000000Z",
+  }).success, false);
+});

@@ -16,7 +16,19 @@ test("the v1 public exports share the candidate revision, role/status vocabulary
     "READ_CASE", "READ_EVIDENCE", "WRITE_DRAFT", "ADD_EVIDENCE", "SUBMIT_CASE",
     "REQUEST_ASSESSMENT", "REVIEW_CASE", "RESOLVE_CASE", "CLOSE_CASE", "PROCESS_AI", "ASSIGN_CASE", "ESCALATE_CASE",
   ]);
-  assert.deepEqual([...ErrorCodeSchema.options].sort(), Object.keys(ErrorHttpStatus).sort());
+  // Independent expected mapping transcribed from canonical spec §2.
+  const expectedErrors = {
+    MALFORMED_REQUEST: 400,
+    UNAUTHENTICATED: 401, INVALID_API_KEY: 401,
+    FORBIDDEN: 403, CONSENT_REQUIRED: 403, ASSIGNMENT_REQUIRED: 403, INSUFFICIENT_SCOPE: 403,
+    NOT_FOUND: 404,
+    INVALID_TRANSITION: 409, STALE_VERSION: 409, STALE_ASSESSMENT: 409,
+    IDEMPOTENCY_CONFLICT: 409, REQUEST_IN_PROGRESS: 409,
+    PAYLOAD_TOO_LARGE: 413, UNSUPPORTED_MEDIA_TYPE: 415, VALIDATION_FAILED: 422,
+    RATE_LIMITED: 429, SERVICE_UNAVAILABLE: 503,
+  };
+  assert.deepEqual(ErrorHttpStatus, expectedErrors);
+  assert.deepEqual([...ErrorCodeSchema.options].sort(), Object.keys(expectedErrors).sort());
 });
 
 test("exported inferred types compose with the same runtime schemas used by consumers", () => {

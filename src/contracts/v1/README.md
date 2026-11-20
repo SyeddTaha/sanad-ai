@@ -89,7 +89,8 @@ Executed on 21 November 2026:
 | Check | Actual result |
 | --- | --- |
 | Focused `npx tsx --test src/contracts/v1/<area>.test.ts` runs | Red observed before each new slice; subsequent green runs passed. |
-| `npm test` (all seven contract test files) | Exit 0; 24 passed, 0 failed, 0 skipped. |
+| `npm test` (initial seven-file suite) | Exit 0; 24 passed, 0 failed, 0 skipped before review regression was added. |
+| `npm run test:contracts` (final seven-file suite) | Exit 0; 25 passed, 0 failed, 0 skipped, including the timestamp-precision regression. |
 | `npm run typecheck` | Exit 0, including another run after the build. |
 | `npm run lint` | Exit 0; no diagnostics. |
 | `npm run build` | Exit 0; starter `/` and `/_not-found` generated. Next.js warned about an ignored lockfile in the parent Projects directory. |
@@ -98,3 +99,39 @@ Executed on 21 November 2026:
 The successful build verifies compatibility with the starter application. No
 contract HTTP route, hosted feature, runtime authorization check or crypto/AI
 acceptance test is claimed by these results.
+
+## Standards review
+
+Reviewed from task-start commit `be43c7c2d9862b4ff53c4791b2694d3c297ff149`.
+The separate Standards reviewer found one tautological catalog assertion. It
+was replaced with an independent expected error/status mapping from spec §2.
+Recheck: no remaining documented-standard violations or baseline smells.
+
+## Spec review
+
+The separate Spec reviewer confirmed the bounded scope and found a timestamp
+precision defect also reproduced during parent review: `Date.parse` truncated
+valid RFC3339 fractions beyond milliseconds. Consent chronology now compares
+validated UTC seconds and full fractional precision. A public-schema regression
+failed before the fix and passed afterward. Recheck: no remaining Spec findings.
+
+Review totals: Standards 0 remaining; Spec 0 remaining. Contract-owner and
+affected-developer approval remain pending; code review is not contract freeze.
+
+## Changed files
+
+All paths below are relative to `src/contracts/v1/` except the package files.
+
+| Files | Purpose |
+| --- | --- |
+| `index.ts` | Public versioned import boundary and revision/path constants |
+| `scalars.ts` | Reused validated scalars and inferred types |
+| `authorization.ts`, `consent.ts` | Role, principal, context, grant and action shapes |
+| `notice.ts` | Notice header/payload and transport syntax shapes |
+| `evidence.ts` | Six independent findings and source references |
+| `case.ts` | Case states, metadata, transitions and resolution request |
+| `assessment.ts`, `ai-metadata.ts` | Rule/assessment provenance and advisory AI metadata |
+| `fixtures.ts` | Shared synthetic examples with inferred-type checks |
+| `api.test.ts`, `assessment.test.ts`, `case.test.ts`, `consent.test.ts`, `evidence.test.ts`, `exports.test.ts`, `notice.test.ts` | 25 public-boundary behavior tests |
+| `README.md` | Approval ledger, import guide, limitations and validation/review evidence |
+| Root `package.json`, `package-lock.json` | Pinned Zod and test runner; test and typecheck scripts |
