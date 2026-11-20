@@ -71,3 +71,15 @@ _Avoid_: Rejected case
 **Case Resolution**:
 A Department Officer's reasoned disposition of a Case, based on a fresh Assessment and valid authorization. It establishes neither relief payment completion nor eligibility approval.
 _Avoid_: Payment approval, eligibility approval
+
+**Mock Identity Service**:
+The source of synthetic recipient records and identity lookup findings used in SANAD verification. Ambiguous matches remain ambiguous; name similarity alone does not establish a unique recipient or justify merging records.
+_Avoid_: Real identity verification
+
+**Mock Payment Service**:
+The source of synthetic relief payment records and payment-status findings. Whether a record was found is separate from its settlement status and from Signed Notice authenticity.
+_Avoid_: Payment authorization service
+
+**Mock Program Data Service**:
+The source of synthetic program records and eligibility inputs used in SANAD Assessments.
+_Avoid_: Government records integration
