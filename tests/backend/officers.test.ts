@@ -235,3 +235,33 @@ test("reassignment immediately removes the previous officer's evidence authority
     await db.query("delete from public.role_assignments where profile_id=$1 and role='OFFICER'",[id(2)]);
   }
 });
+
+test("queue disclosures retain their Case and consent references in minimal audit history",async()=>{
+  const {record}=await reviewedCase();
+  const response=await handleStaffQueue(request(4),"officer",dependencies(4));
+  assert.equal(response.status,200);
+  const audit=(await (await handleAudit(request(6),record.id,dependencies(6))).json()).data.items;
+  const read=audit.find((event:{action:string})=>event.action==="STAFF_QUEUE_READ");
+  assert.ok(read);
+  assert.ok(read.authorizationRef);
+});
+
+test("queue rechecks consent after its awaited audit before returning any metadata",async()=>{
+  const {record}=await reviewedCase();
+  await db.exec(`create function public.b04_test_queue_withdrawal() returns trigger language plpgsql as $$ begin
+    if new.action='STAFF_QUEUE_READ' and new.outcome='ALLOWED' then update public.consent_grants set revoked_at=clock_timestamp() where case_id='${record.id}'::uuid and recipient_type='DEPARTMENT' and revoked_at is null; end if; return new; end $$;
+    create trigger b04_test_queue before insert on public.audit_events for each row execute function public.b04_test_queue_withdrawal();`);
+  try { assert.equal((await handleStaffQueue(request(4),"officer",dependencies(4))).status,403); }
+  finally {await db.exec("drop trigger b04_test_queue on public.audit_events; drop function public.b04_test_queue_withdrawal();");}
+});
+
+test("officer queue confidence requires evidence sharing in addition to Case metadata permission",async()=>{
+  const {record}=await reviewedCase();
+  const grants=(await (await handleConsent(request(1),"list",record.id,dependencies(1))).json()).data.items;
+  const grant=grants.find((grant:{recipientType:string})=>grant.recipientType==="DEPARTMENT");
+  await handleConsent(request(1,{expectedVersion:grant.version}),"revoke",grant.id,dependencies(1));
+  await handleConsent(request(1,{recipientType:"DEPARTMENT",recipientId:id(30),purpose:"synthetic_department_review",actions:["READ_CASE"],expiresAt:new Date(Date.now()+3600000).toISOString()}),"grant",record.id,dependencies(1));
+  assert.equal((await handleCase(request(4),"detail",record.id,dependencies(4))).status,200);
+  const queue=(await (await handleStaffQueue(request(4),"officer",dependencies(4))).json()).data.items;
+  assert.equal(queue.some((item:{caseId:string})=>item.caseId===record.id),false);
+});

@@ -47,7 +47,7 @@ logical action. Responses use `{data,requestId}` or the frozen error envelope,
 
 | Method/path | Strict request | Response `data` / authority |
 | --- | --- | --- |
-| `GET /cases` | Optional `cursor`, `limit`, `status`, `sort` | `{items:OfficerQueueItem[],nextCursor}`; OFFICER, assignment, department membership and active `READ_CASE`. |
+| `GET /cases` | Optional `cursor`, `limit`, `status`, `sort` | `{items:OfficerQueueItem[],nextCursor}`; OFFICER, assignment, department membership and active `READ_CASE` + `READ_EVIDENCE` under the same department grant. |
 | `GET /admin/dispatch` | Same pagination/status; sort `priority` or `oldest` | `{items:DispatchItem[],nextCursor}`; ADMIN with department membership and active `ASSIGN_CASE` grant. |
 | `POST /cases/{id}/assign` | `{expectedVersion,departmentId,officerId,reason}` | `DispatchItem`; ADMIN, matching department sharing with `ASSIGN_CASE`; target active OFFICER must belong to that department. Used for initial assignment and reassignment. |
 | `POST /cases/{id}/priority` | `{expectedVersion,departmentId,priority,reason}` | `DispatchItem`; ADMIN, same dispatch authority; assigned department must match. `priority` is `NORMAL` or `HIGH`. |

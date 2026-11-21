@@ -32,7 +32,7 @@ export async function handleCaseRecords(request:NextRequest,kind:"evidence"|"dec
         previousOfficerId:row.previous_officer_id,officerId:row.officer_id,previousDepartmentId:row.previous_department_id,departmentId:row.department_id,
         previousStatus:row.previous_status,status:row.status,caseVersion:row.case_version,evidenceVersion:row.evidence_version,
         assessmentId:row.assessment_id,reviewedAssessmentId:row.reviewed_assessment_id,ruleVersionId:row.rule_version_id,createdAt:new Date(row.created_at as string).toISOString()})),limit);
-    },dependencies,{requestId,auditAction:kind==="evidence" ? "EVIDENCE_READ" : "DECISIONS_READ"});
+    },dependencies,{requestId,auditAction:kind==="evidence" ? "EVIDENCE_READ" : kind==="program-inputs" ? "PROGRAM_INPUTS_READ" : "DECISIONS_READ"});
     return privateJson({data,requestId});
   } catch (error) {return errorJson(error,requestId);}
 }

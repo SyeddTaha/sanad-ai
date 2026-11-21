@@ -4,7 +4,7 @@ import { z } from "zod";
 import { CaseStatusSchema, ResolveCaseRequestSchema } from "@/contracts/v1";
 import { AuthFailure } from "@/backend/auth/principal";
 import { privateJson } from "@/backend/auth/session";
-import { authorize, type Permission } from "@/backend/authorization/policy";
+import { authorize, type Permission,type PolicyContext } from "@/backend/authorization/policy";
 import { hasDepartmentSharing,loadCaseAuthorizations, reconcileConsentStatus, withAuthorizedCase } from "@/backend/authorization/service";
 import { audit, inAuthorizationTransaction, type Dependencies } from "@/backend/authorization/transaction";
 import { errorJson, readBody } from "@/backend/consent/http";
@@ -104,27 +104,32 @@ export async function handleStaffQueue(request: NextRequest, kind: "officer" | "
           select 1 from public.consent_grants g where g.case_id=c.id and g.recipient_type='DEPARTMENT'
           and g.purpose='synthetic_department_review' and g.recipient_id=any($3::uuid[])
           and ($1='dispatch' or g.recipient_id=c.assigned_department_id)
+          and ($1='dispatch' or 'READ_EVIDENCE'::public.sanad_consent_action=any(g.actions))
           and g.revoked_at is null and g.created_at<=clock_timestamp() and g.expires_at>clock_timestamp()
           and $4::public.sanad_consent_action=any(g.actions))
         and ($5::uuid is null or (${order("c")})>(select ${order("x")} from public.cases x where x.id=$5))
         and ($7::text is null or c.status=$7)
         order by ${order("c")} limit $6`, [kind, tx.identity.principal.id, tx.identity.departmentIds, action, cursor, limit + 1,status]);
       const permission = { action: action as "READ_CASE" | "ASSIGN_CASE", purpose: "synthetic_department_review" };
+      // An assessment confidence is private: the same grant must also cover evidence.
+      const queueDecision=(context:PolicyContext)=>authorize(kind==="officer" ? {...context,grants:context.grants.filter(grant=>grant.actions.includes("READ_EVIDENCE"))} : context,permission);
       const snapshots=await loadCaseAuthorizations(tx,rows.map(row=>String(row.id)));
       for (const {context,record} of snapshots) {
-        if (!record || !authorize(context,permission).allowed || ["RESOLVED","CLOSED"].includes(String(record.status))) continue;
+        if (!record || !queueDecision(context).allowed || ["RESOLVED","CLOSED"].includes(String(record.status))) continue;
         const desired=hasDepartmentSharing(context) ? (record.status==="PENDING_CONSENT" ? "SUBMITTED" : record.status) : "PENDING_CONSENT";
         if (desired!==record.status) await reconcileConsentStatus(tx,context.target.caseId);
       }
       const items = [];
+      const authorizations=new Map<string,string>();
       const fresh=await loadCaseAuthorizations(tx,rows.map(row=>String(row.id)));
       const confidenceById=new Map(rows.map(row=>[String(row.id),Number(row.confidence)]));
       for (const {context,record} of fresh) {
         if (!record) continue;
-        const decision=authorize(context,permission);
+        const decision=queueDecision(context);
         if (!decision.allowed) continue;
         const caseId=context.target.caseId;
         const grant = context.grants.find((grant) => grant.id === decision.authorizationRef)!;
+        authorizations.set(caseId,grant.id);
         const item=DispatchItemSchema.parse({ caseId, departmentId: grant.recipientId, assignedOfficerId: record.assigned_officer_id,
           status: record.status, priority: record.priority, version: record.version,
           createdAt: new Date(record.created_at as string).toISOString(), updatedAt: new Date(record.updated_at as string).toISOString() });
@@ -132,8 +137,16 @@ export async function handleStaffQueue(request: NextRequest, kind: "officer" | "
       }
       const rank=new Map(rows.map((row,index)=>[String(row.id),index]));
       items.sort((a,b) => rank.get(a.caseId)!-rank.get(b.caseId)!);
-      await audit(tx, "STAFF_QUEUE_READ");
-      return { items: items.slice(0,limit), nextCursor: items.length>limit ? items[limit-1].caseId : null };
+      const returned=items.slice(0,limit);
+      if (returned.length) {
+        await tx.db.query(`insert into public.audit_events(request_id,actor_id,action,outcome,target_id,authorization_ref)
+          select $1,$2,'STAFF_QUEUE_READ','ALLOWED',entry.case_id,entry.authorization_ref
+          from jsonb_to_recordset($3::jsonb) as entry(case_id uuid,authorization_ref uuid)`,[tx.requestId,tx.identity.principal.id,
+          JSON.stringify(returned.map(item=>({case_id:item.caseId,authorization_ref:authorizations.get(item.caseId)})))]);
+      } else await audit(tx,"STAFF_QUEUE_READ");
+      const committing=await loadCaseAuthorizations(tx,returned.map(item=>item.caseId));
+      if (committing.some(({context})=>!queueDecision(context).allowed)) throw new AuthFailure("CONSENT_REQUIRED");
+      return { items: returned, nextCursor: items.length>limit ? items[limit-1].caseId : null };
     }, dependencies);
     return privateJson({ data, requestId });
   } catch (error) { return errorJson(error, requestId); }

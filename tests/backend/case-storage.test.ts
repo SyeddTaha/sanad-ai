@@ -16,7 +16,7 @@ test("private Case persistence denies direct access even under permissive Supaba
   for (const role of ["anon", "authenticated", "service_role"]) {
     await db.exec(`set role ${role}`);
     try {
-      for (const table of ["evidence_items", "assessments", "assessment_evidence", "assessment_sources", "case_events", "case_operation_keys", "case_inputs", "assessment_rule_bases"]) {
+      for (const table of ["evidence_items", "assessments", "assessment_evidence", "assessment_sources", "case_events", "case_operation_keys", "case_inputs", "assessment_rule_bases", "rule_versions", "rule_publication", "case_decisions", "synthetic_program_inputs"]) {
         await assert.rejects(db.query(`select * from public.${table}`), { code: "42501" });
       }
     } finally { await db.exec("reset role"); }

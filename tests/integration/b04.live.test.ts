@@ -42,7 +42,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
     const submitted=await data("/cases","CITIZEN_A",{caseId,expectedDraftVersion:2},201);
     const assigned=DispatchResponseSchema.parse(await (await call(`/cases/${caseId}/assign`,"ADMIN",{expectedVersion:submitted.version,departmentId,officerId:ids.get("OFFICER"),reason:"Synthetic department dispatch"})).json()).data;
     const review=await data(`/cases/${caseId}/start-review`,"OFFICER",{expectedVersion:assigned.version});
-    const assessment=await assess(caseId);
+    const assessment=AssessmentSchema.parse(await data(`/cases/${caseId}/assessments`,"OFFICER",{expectedEvidenceVersion:review.case.evidenceVersion,includeAi:false},201));
     return {caseId,grant,record:CaseSchema.parse(review.case),assessment,body:{expectedVersion:review.case.version,reviewedAssessmentId:assessment.id,reason:"Reviewed synthetic dispute; unknown payment remains unknown. Case disposition authorizes no payment."}};
   }
   async function waitForBlocker(pid:number) {
