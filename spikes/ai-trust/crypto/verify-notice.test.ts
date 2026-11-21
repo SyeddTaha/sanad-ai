@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { CompactSign, compactVerify, exportJWK } from "jose";
 import { SignedNoticePayloadSchema } from "@/contracts/v1";
 import { noticePayloadFixture } from "@/contracts/v1/fixtures";
-import { assertUniqueJsonMembers, JsonMemberError } from "./json-members";
+import { assertUniqueJsonMembers, JsonMemberError } from "@/lib/json-members";
 import { memoryIssuerRegistry } from "./registry";
 import { generateSyntheticIssuerKeyPair, signReliefNotice, verifySignedNotice } from "./verify-notice";
 
