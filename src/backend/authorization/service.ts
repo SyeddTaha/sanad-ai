@@ -1,8 +1,8 @@
 import "server-only";
 import type { NextRequest } from "next/server";
-import { ConsentGrantSchema, IdSchema } from "@/contracts/v1";
+import { ConsentGrantSchema, IdSchema, type ConsentAction } from "@/contracts/v1";
 import { AuthFailure } from "@/backend/auth/principal";
-import { authorize, type Permission, type PolicyContext } from "./policy";
+import { authorize, type Decision, type Permission, type PolicyContext } from "./policy";
 import { audit, inAuthorizationTransaction, lockTarget, type Dependencies, type Transaction } from "./transaction";
 
 export function consentRecord(row: Record<string, unknown>) {
@@ -40,22 +40,44 @@ export async function reconcileConsentStatus(tx: Transaction, caseId: string) {
 /** Use for reads, writes and cached-result retrieval. Never reuse an earlier decision.
  * Callback runs under the reservation lock; all protected SQL must use tx.db.
  */
-export async function withAuthorizedCase<T>(request: NextRequest, permission: Permission & { caseId: string },
-  work: (tx: Transaction, context: PolicyContext) => Promise<T>, dependencies: Dependencies = {}): Promise<T> {
-  const result = await inAuthorizationTransaction(request, crypto.randomUUID(), permission.action, async (tx) => {
-    if (!IdSchema.safeParse(permission.caseId).success) throw new AuthFailure("VALIDATION_FAILED");
-    const context = await loadAuthorization(tx, permission.caseId);
-    const decision = authorize(context, permission);
+type CasePermission = Permission & { caseId: string | (() => string); alternativePurposes?: readonly string[]; additionalActions?: ConsentAction[] };
+type RequestOptions = { requestId?: string; auditAction?: string; prepare?: () => Promise<void>; recheck?: (context: PolicyContext) => void };
+function completeDecision(context: PolicyContext, permission: CasePermission): Decision {
+  const purposes = [permission.purpose, ...permission.alternativePurposes ?? []];
+  let denial: Decision | undefined;
+  for (const purpose of purposes) {
+    const decisions = [permission.action, ...permission.additionalActions ?? []].map((action) => authorize(context, { ...permission, action, purpose }));
+    if (decisions.every((decision) => decision.allowed)) return decisions[0];
+    denial ??= decisions.find((decision) => !decision.allowed);
+  }
+  return denial ?? { allowed: false, code: "CONSENT_REQUIRED" };
+}
+export async function withAuthorizedCase<T>(request: NextRequest, permission: CasePermission,
+  work: (tx: Transaction, context: PolicyContext) => Promise<T>, dependencies: Dependencies = {}, options: RequestOptions = {}): Promise<T> {
+  const event = options.auditAction ?? permission.action;
+  const result = await inAuthorizationTransaction(request, options.requestId ?? crypto.randomUUID(), event, async (tx) => {
+    const caseId = typeof permission.caseId === "function" ? permission.caseId() : permission.caseId;
+    if (!IdSchema.safeParse(caseId).success) throw new AuthFailure("VALIDATION_FAILED");
+    const context = await loadAuthorization(tx, caseId).catch((error: unknown) => {
+      // A nonexistent and an inaccessible owner-bound target have identical denial.
+      if (error instanceof AuthFailure && error.code === "FORBIDDEN") throw new AuthFailure("CONSENT_REQUIRED");
+      throw error;
+    });
+    const decision = completeDecision(context, permission);
     if (decision.allowed || (context.principal.roles.includes("OFFICER") && context.target.assignedOfficerId === context.principal.id &&
-      context.assignedDepartmentId && context.departmentIds.includes(context.assignedDepartmentId))) await reconcileConsentStatus(tx, permission.caseId);
-    await audit(tx, permission.action, decision.allowed ? "ALLOWED" : "DENIED", decision.allowed ? permission.caseId : undefined, decision.authorizationRef);
-    if (!decision.allowed) return { allowed: false as const, code: decision.code };
+      context.assignedDepartmentId && context.departmentIds.includes(context.assignedDepartmentId))) await reconcileConsentStatus(tx, caseId);
+    if (!decision.allowed) {
+      await audit(tx, event, "DENIED");
+      return { allowed: false as const, code: decision.code };
+    }
     const value = await work(tx, context);
+    await audit(tx, event, "ALLOWED", caseId, decision.authorizationRef);
     // Time passes even under a lock. Do not commit a write or return data after grant expiry.
-    const fresh = await loadAuthorization(tx, permission.caseId);
-    if (!authorize(fresh, permission).allowed) throw new AuthFailure("CONSENT_REQUIRED");
+    const fresh = await loadAuthorization(tx, caseId);
+    if (!completeDecision(fresh, permission).allowed) throw new AuthFailure("CONSENT_REQUIRED");
+    options.recheck?.(fresh);
     return { allowed: true as const, value };
-  }, dependencies);
+  }, dependencies, options.prepare);
   if (!result.allowed) throw new AuthFailure(result.code ?? "FORBIDDEN");
   return result.value;
 }
