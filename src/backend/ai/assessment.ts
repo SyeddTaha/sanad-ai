@@ -70,10 +70,11 @@ const SYSTEM_PROMPT = [
 ].join(" ");
 
 const AUTHORITATIVE_EXPLANATION = /\b(signature\s+(?:is\s+)?valid|payment\s+(?:is\s+)?settled|eligibility\s+approved|you\s+are\s+eligible|payment\s+(?:was\s+)?paid)\b|دستخط.{0,20}(?:درست|مصدقہ)|ادائیگی.{0,20}(?:ہو گئی|مکمل)|اہلیت.{0,20}(?:منظور|ثابت)/iu;
-const INJECTION_OR_THREAT = /\b(ignore (?:all )?(?:previous|prior) instructions|reveal (?:the )?(?:system )?prompt|you are now (?:a|the) (?:payment )?approver|set (?:signature|eligibility|payment)|send (?:me )?(?:money|credentials)|(?:send|pay|transfer)\s+(?:PKR|Rs\.?)\s*[\d,]+|pay (?:a )?(?:fee|charge)|transfer (?:money|funds)|threaten|will be cancelled)\b|(?:رقم|فیس).{0,30}(?:بھیجیں|جمع|ادا)|(?:ورنہ|بصورتِ دیگر).{0,30}(?:منسوخ|بند)/iu;
+const INJECTION_OR_THREAT = /\b(ignore (?:all )?(?:previous|prior) instructions|reveal (?:the )?(?:system )?prompt|you are now (?:a|the) (?:payment )?approver|set (?:signature|eligibility|payment)|send (?:me )?(?:money|credentials)|(?:send|pay|transfer)\s+(?:PKR|Rs\.?)\s*[\d,]+|(?:send|share|provide|enter|reply with)\s+(?:your\s+)?(?:OTP|PIN|password|credentials|bank details)|pay (?:a )?(?:fee|charge)|transfer (?:money|funds)|threaten|will be cancelled|scam|fraud|fake|phishing)\b|(?:رقم|فیس).{0,30}(?:بھیجیں|جمع|ادا)|(?:ورنہ|بصورتِ دیگر).{0,30}(?:منسوخ|بند)/iu;
 const AMOUNT_PATTERN = /\b(?:PKR|Rs\.?|රු) ?\s?([\d,]+)\b/giu;
 const PAYMENT_REF_PATTERN = /\b(PAY[-_][A-Z0-9-]+)\b/giu;
-const ISSUER_PATTERN = /\b([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*)*\s+(?:Relief|Welfare|Social Protection)\s+Authority)\b/g;
+const ISSUER_PATTERN = /\b([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*)*\s+(?:Relief|Welfare|Social Protection)\s+Authority|[A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]*)*\s+(?:Department|Agency|Bank|Foundation|Trust|Commission|Bureau))\b/g;
+const ISSUER_CUE_PATTERN = /\b(?:this is|This is|from|From|issuer(?: is|:)?|Issuer(?: is|:)?|issued by|Issued by)\s+(?:the\s+)?([A-Z][A-Za-z0-9]*(?:\s+[A-Z][A-Za-z0-9]*){0,3})\b/g;
 
 export async function assessReliefMessage(message: string, options: AssessmentOptions = {}): Promise<AssessmentResult> {
   const started = performance.now();
@@ -119,9 +120,12 @@ export async function assessReliefMessage(message: string, options: AssessmentOp
 function applySafetyPolicy(message: string, model: ReliefAssessmentOutput, metadata: AssessmentResult["metadata"]): AssessmentResult {
   const amounts = messageAmounts(message);
   const refs = uniqueMatches(message, PAYMENT_REF_PATTERN);
-  const issuers = uniqueMatches(message, ISSUER_PATTERN);
+  const issuers = [...new Set([
+    ...uniqueMatches(message, ISSUER_PATTERN),
+    ...uniqueMatches(message, ISSUER_CUE_PATTERN),
+  ])];
   const suspicious = INJECTION_OR_THREAT.test(message) || model.classification === "SUSPICIOUS_MESSAGE";
-  const contradictory = refs.length > 1 || issuers.length > 1 || (amounts.length > 1 && !suspicious);
+  const contradictory = refs.length > 1 || issuers.length > 1 || amounts.length > 1;
   const claims = {
     issuer: issuers.length <= 1 && model.extractedIssuerClaim && message.toLocaleLowerCase().includes(model.extractedIssuerClaim.toLocaleLowerCase())
       ? model.extractedIssuerClaim : null,

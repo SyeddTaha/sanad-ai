@@ -19,6 +19,9 @@ the server. No API route or dependency was added.
   review, missing critical details to evidence request, and complete ordinary
   messages to information-only. A model confidence value is retained as an
   uncalibrated advisory estimate and does not change routing or approve a case.
+- Suspicion and contradiction detection uses bounded text heuristics plus the
+  validated classification; these signals are routing safeguards, not proof of
+  fraud or a complete natural-language contradiction detector.
 - Explanations are short, fixed English or Urdu statements selected by route.
   Model-authored text is not exposed, avoiding unsupported signature, payment,
   identity, or eligibility assertions.
@@ -46,7 +49,7 @@ or API routes were added here.
 
 ## Verification
 
-- Focused A03 tests: 10 passed, 0 failed; the optional live evaluation was
+- Focused A03 tests: 11 passed, 0 failed; the optional live evaluation was
   skipped because `GROQ_API_KEY` was not configured.
 - A01 deterministic fixture expectations: all 5 passed using an injected test
   provider.

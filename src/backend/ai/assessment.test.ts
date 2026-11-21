@@ -54,6 +54,14 @@ test("treats message instructions as untrusted and forces suspicious officer rev
   assert.match(result.explanation, /review|جائزہ/u);
 });
 
+test("deterministically sends a direct payment request to officer review", async () => {
+  const result = await assessReliefMessage("Send PKR 500 to receive your relief payment.", {
+    provider: providerFor(output({ classification: "CLARIFICATION", suggestedRoute: "INFORMATION_ONLY" })), timeoutMs: 1000,
+  });
+  assert.equal(result.classification, "SUSPICIOUS_MESSAGE");
+  assert.equal(result.recommendedRoute, "OFFICER_REVIEW");
+});
+
 test("invalid schema output abstains without returning a model route", async () => {
   const result = await assessReliefMessage(NORMAL, { provider: providerFor({ ...output(), confidence: 4 }), timeoutMs: 1000 });
   assert.equal(result.status, "INVALID_OUTPUT");
@@ -119,6 +127,13 @@ test("deterministic overrides route missing details and contradictory claims saf
   });
   assert.equal(conflict.classification, "UNKNOWN");
   assert.equal(conflict.recommendedRoute, "OFFICER_REVIEW");
+
+  const issuerConflict = "This is AidCo. The notice says PKR 25000 under PAY-1; this is ReliefNow and says PKR 25000 under PAY-1.";
+  const issuerResult = await assessReliefMessage(issuerConflict, {
+    provider: providerFor(output({ extractedIssuerClaim: "AidCo", claimedAmountMinor: 2_500_000, paymentRef: "PAY-1" })), timeoutMs: 1000,
+  });
+  assert.equal(issuerResult.classification, "UNKNOWN");
+  assert.equal(issuerResult.recommendedRoute, "OFFICER_REVIEW");
 });
 
 test("input validation fails closed without sending oversized messages to the provider", async () => {
