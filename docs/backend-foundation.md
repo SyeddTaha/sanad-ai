@@ -98,7 +98,8 @@ demo users if the SQL transaction previously rolled back.
 
 ## Configuration and demo setup
 
-Use Node 22.9+ and `npm ci`. Copy `.env.example` to an ignored `.env.local` or
+Use Node with `--env-file-if-exists` support (verified with Node 26.13.1) and
+`npm ci`. Copy `.env.example` to an ignored `.env.local` or
 configure the same environment names in the deployment. Existing ignored `.env`
 also works. Scripts load `.env` then `.env.local`; externally set variables take
 precedence. Values are never committed.
@@ -217,3 +218,11 @@ Vercel deployment, OAuth, password-reset UI, refresh-token rotation, case-level
 policy enforcement and AI behavior are not demonstrated by B01. B02 can build on
 verified identity and persistence, but must implement the operational consent
 purpose allowlist and scoped authorization before exposing case/evidence access.
+
+Official references used for implementation:
+[Auth getUser](https://supabase.com/docs/reference/javascript/auth-getuser),
+[Auth sessions](https://supabase.com/docs/guides/auth/sessions),
+[local sign-out](https://supabase.com/docs/reference/javascript/auth-signout),
+[PostgreSQL TLS](https://supabase.com/docs/guides/platform/ssl-enforcement).
+The installed Next.js 16.4.6 authentication, route-handler, cookie and environment
+guides were read before implementation.

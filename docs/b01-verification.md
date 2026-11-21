@@ -22,8 +22,17 @@ main and origin/main at the same commit. No frozen contract source was modified.
 | PostgreSQL connectivity | Actual authenticated PostgreSQL connection with certificate/hostname validation using Supabase's public CA. The first attempt failed CA trust; no TLS bypass was used. |
 | Migration application | Both `20261121000100_backend_foundation.sql` and `20261121000200_session_expiry.sql` applied to the configured development database. Repeated application skipped unchanged migrations. |
 | Demo provisioning | Six distinct synthetic Auth users, active profiles, all five roles, one officer department/membership. Repeat setup reused the users without duplicates. Passwords generated into ignored `.env`, never printed or committed. |
-| Live HTTP | Updated suite: 12 tests passed, 0 failed, 0 skipped (parent suite and eleven subtests), including real server-side session expiry. Final post-review run recorded below. |
+| Live HTTP | Final post-review production-server run: 12 passed, 0 failed, 0 skipped (parent suite and eleven subtests), including real server-side session expiry and session cleanup. |
 | Ignored secrets | `.env`, `.env.local` and `.supabase-ca.crt` ignored; `.env.example` contains names with blank values only. |
+| Secret scans | Staged implementation diff and all 24 generated browser assets contained none of the configured secret-key, database-URI or demo-password values. |
+| Login interface smoke check | Real `/login` HTTP 200 with email/password form and session controls present; this is not a browser-interaction test. |
+| Final repository checks | `git diff --check` passed; all local handoff links resolved; the inventory below matched all 33 changed files; frozen contract diff empty. |
+
+Post-review gate: contract suite 25/25, backend suite 20/20, live suite 12/12,
+typecheck, lint and production build all passed. Both hosted migrations remain
+current on repeat execution. The build was restarted as a production server
+before the final live run. No integration test was skipped or substituted with
+a provider mock in that live suite.
 
 The live suite calls real Supabase Auth, PostgreSQL, Supabase PostgREST and a
 running production Next.js server at localhost:3100. It checks all synthetic role
@@ -41,9 +50,28 @@ independently exercised using `auth.sessions.not_after` with a valid access toke
 
 ## Focused review
 
-Review target: the complete B01 diff from baseline `570335c`.
-Standards/security and specification reviews are pending at this checkpoint.
-Results and follow-up verification will be recorded before push.
+Review target: the complete B01 diff from baseline `570335c` to implementation
+commit `c67bf71`. Two separate reviewers inspected this diff using the installed
+code-review skill. Neither accessed credentials or mutated the live database.
+
+## Standards
+
+No confirmed P0/P1 security defects or documented-standard violations. Reviewed
+principal verification, database-held roles, session ownership/expiry/revocation,
+CSRF, no-store responses, secrets, SQL privileges/RLS, audit sanitization and seed
+ownership markers. No significant baseline smells. This reviewer performed a
+source review, not a separate test run.
+
+## Spec
+
+No blocking missing B01 requirements, unwanted scope, or reproducible P0/P1
+defects. Frozen contracts are unchanged. The reviewer independently ran the
+backend suite (20 passed) and contract suite (25 passed), inspecting rather than
+rerunning hosted integration evidence. Browser/device/deployment and B02 work
+remain accurately identified as deferred.
+
+Review totals: Standards 0 remaining; Spec 0 remaining. No P0/P1 remains in the
+reviewed B01 behavior. Subsequent changes only finalize this evidence record.
 
 ## Exact changed files
 
