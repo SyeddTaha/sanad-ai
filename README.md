@@ -6,6 +6,10 @@ synthetic accounts and frontend/backend authentication integration, see
 B02 centralized authorization, consent endpoint schemas, purpose disclosures and
 teammate integration examples are in [the RBAC and consent handoff](docs/b02-rbac-consent.md).
 
+B03 Case submission, immutable evidence/Assessment persistence, Passport endpoints
+and setup are in [the Case and Evidence Passport handoff](docs/b03-cases-evidence.md)
+and [verification evidence](docs/b03-verification.md).
+
 ## Getting Started
 
 First, run the development server:

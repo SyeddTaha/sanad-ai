@@ -14,7 +14,7 @@ export function errorJson(error: unknown, requestId: string) {
   const code = error instanceof AuthFailure ? error.code : "SERVICE_UNAVAILABLE";
   return privateJson({ requestId, error: { code, messageKey: "errors." + code.toLowerCase(), fieldErrors: [], retryable: ["SERVICE_UNAVAILABLE", "RATE_LIMITED", "REQUEST_IN_PROGRESS"].includes(code) } }, ErrorHttpStatus[code]);
 }
-async function readBody(request: NextRequest) {
+export async function readBody(request: NextRequest, maxBytes = 8192) {
   if (request.cookies.has(SESSION_COOKIE) && (request.headers.get("origin") !== request.nextUrl.origin || request.headers.get("sec-fetch-site") === "cross-site")) throw new AuthFailure("FORBIDDEN");
   if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") throw new AuthFailure("UNSUPPORTED_MEDIA_TYPE");
   if (!request.body) throw new AuthFailure("MALFORMED_REQUEST");
@@ -30,7 +30,7 @@ async function readBody(request: NextRequest) {
       const { value, done } = await Promise.race([reader.read(), deadline]);
       if (done) break;
       size += value.byteLength;
-      if (size > 8192) { await reader.cancel(); throw new AuthFailure("PAYLOAD_TOO_LARGE"); }
+      if (size > maxBytes) { await reader.cancel(); throw new AuthFailure("PAYLOAD_TOO_LARGE"); }
       chunks.push(value);
     }
   } finally { clearTimeout(timeout); reader.releaseLock(); }
