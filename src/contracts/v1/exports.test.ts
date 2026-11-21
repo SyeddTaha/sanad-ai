@@ -7,8 +7,8 @@ import {
 } from "@/contracts/v1";
 import { evidencePassportFixture, fixtureIds } from "@/contracts/v1/fixtures";
 
-test("the v1 public exports share the candidate revision, role/status vocabulary and error catalog", () => {
-  assert.equal(CONTRACT_REVISION, "candidate-v1.0.0");
+test("the v1 public exports share the frozen revision, role/status vocabulary and error catalog", () => {
+  assert.equal(CONTRACT_REVISION, "v1.0.0");
   assert.equal(API_BASE_PATH, "/api/v1");
   assert.deepEqual(RoleSchema.options, ["CITIZEN", "HELPER", "OFFICER", "ADMIN", "AUDITOR"]);
   assert.deepEqual(CaseStatusSchema.options, ["SUBMITTED", "UNDER_REVIEW", "NEEDS_EVIDENCE", "PENDING_CONSENT", "RESOLVED", "CLOSED"]);

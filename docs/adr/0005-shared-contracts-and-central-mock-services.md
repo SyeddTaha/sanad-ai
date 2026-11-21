@@ -8,10 +8,21 @@ Approved in interview question 5 on 21 November 2026. Four developers using diff
 
 ## Contract authority and source
 
-- Assign one named backend/integration developer as owner of shared schemas and database migrations. Changes require explicit approval from that owner and affected developers. The individual has not been named in this interview; assigning that owner remains a blocker before parallel development.
+- The designated human backend lead owns shared schemas and database migrations. Shared-contract approval is delegated to that owner under the governance amendment below; individual affected-developer signoff is no longer a blocking requirement. Changes still require explicit owner approval and coordinated contract/fixture/test updates.
 - Use shared Zod schemas for runtime validation and inferred TypeScript types. These define requests, responses, findings, case states, errors, and AI outputs; generate public OpenAPI documentation from the same definitions where practical, and avoid manually maintained conflicting schemas.
 - Start with `/api/v1`. Freeze exact field names, enums, error structures, and representative examples for the interfaces needed by parallel work. A frozen contract can change through an explicit, coordinated and reviewed contract update with corresponding test updates.
 - Validate representative requests, responses, error cases, authorization boundaries, and mock-service behavior before integrating dependent features.
+
+## Governance amendment — 21 November 2026
+
+The designated human backend lead and contract owner explicitly stated that the
+team delegates shared-contract approval to them and authorized the bounded
+`v1.0.0` freeze. This supersedes this ADR's earlier owner-plus-affected-developer
+approval requirement; individual teammate signoff no longer blocks shared-contract
+approval. It records the owner's delegation statement, not individual developer
+reviews or approvals. GitHub branch protections remain in force and may not be
+bypassed. Approval covers the currently exported schemas, types and synthetic
+fixtures only; all documented runtime and integration gates remain deferred.
 
 ## Mock boundaries and safe failure
 

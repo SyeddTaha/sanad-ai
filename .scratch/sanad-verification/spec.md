@@ -1,11 +1,11 @@
 # SANAD: evidence-first notice verification and disputes
 
-Status: human-owner-approved bounded contract baseline; affected-developer signoff pending
-Contract revision: candidate-v1.0.0 (promotion target: v1.0.0)
-Implementation gate: bounded schema/type/fixture baseline approved; promotion and deferred integration gates pending
+Status: frozen bounded contract baseline under delegated human-owner authority
+Contract revision: v1.0.0
+Implementation gate: bounded schemas/types/fixtures frozen; deferred implementation and integration gates remain pending
 Updated: 21 November 2026, Asia/Karachi
 
-This is the local-tracker specification. The six architectural decisions are accepted. On 21 November 2026, the requesting human accepted ownership of shared contracts and database migrations and approved all 17 consolidated contract decisions, the exported schemas/types/fixtures as a bounded baseline, the clarifications below and explicit deferrals. This records that human's approval only; affected-developer signoff is pending. Existing exports remain `candidate-v1.0.0` until that signoff and promotion validation. Candidate wording below continues to apply to deferred/unexported projections; the approved exported baseline and its scope are recorded in the approval ledger. No runtime integration or additional feature work is authorized by this record.
+This is the local-tracker specification. The six architectural decisions are accepted. On 21 November 2026, the requesting human accepted ownership of shared contracts and database migrations and approved all 17 consolidated contract decisions, the exported schemas/types/fixtures as a bounded baseline, the clarifications below and explicit deferrals. The designated human backend lead and contract owner subsequently stated that the team delegates shared-contract approval to them and authorized the bounded `v1.0.0` freeze. Individual teammate signoff is no longer blocking under the ADR 0005 governance amendment; no individual developer reviews are asserted. Candidate wording below continues to apply to deferred/unexported projections. The frozen exported baseline and its scope are recorded in the approval ledger. No runtime integration, B01 or additional feature work is authorized by this record.
 
 ## Problem Statement
 
@@ -46,6 +46,14 @@ fixtures at `11de106cd1e4ef8ac153c8c54aed07a40bee4156`. Existing public field na
 enums and fixture shapes are retained. This is a contract projection of the six
 ADRs, not a replacement of their authorization, evidence or human-review rules.
 
+The owner subsequently stated: "The team delegates shared contract approval to
+me. Individual teammate signoff is no longer a blocking requirement." The owner
+explicitly authorized the bounded freeze and promotion to `v1.0.0`, followed by
+fresh validation and a normal protected GitHub merge. This governance amendment
+supersedes the earlier owner-plus-affected-developer approval requirement in
+[ADR 0005](../../docs/adr/0005-shared-contracts-and-central-mock-services.md#governance-amendment--21-november-2026).
+It records delegated authority rather than fabricated individual reviews.
+
 Binding clarifications:
 
 1. Consent purposes must be validated against a server-controlled operational
@@ -64,22 +72,24 @@ Binding clarifications:
 Explicitly pending: full draft and endpoint contracts; mock service interfaces;
 full AI output contracts; runtime authorization and persistence; OpenAPI
 projection; crypto feasibility (Developer 2); AI provider feasibility;
-accessibility and deployment verification; and affected-developer signoff.
+accessibility and deployment verification.
 Operational catalogs, official-PDF fidelity and live demo parameters also retain
 their recorded prerequisites. Approved fixture values are examples only.
 
 The bounded approval narrows the initial G2 freeze to the existing export
 surface. It does not assert completion of the broader G2 interfaces or direct-API
-integration requirements. No teammate approval is inferred from the human
-owner's approval, prior agent code reviews or passing schema tests. Capture each
-affected developer's explicit approval, reviewed commit, evidence and date.
+integration requirements. No teammate approval is inferred from delegated owner
+authority, prior agent code reviews or passing schema tests. Individual reviews
+may still occur but are no longer a contract-freeze prerequisite. GitHub branch
+protections remain mandatory and may not be bypassed.
 
-After affected developers explicitly approve, promote `CONTRACT_REVISION` and
-the export-test expectation to `v1.0.0`, update revision/status documentation,
-then run the existing 25 contract tests, TypeScript check, lint and production
-build. Record fresh results for that promoted commit in the PR into `main`.
-Until then, the candidate can be prepared as a draft PR but must not be presented
-as promoted or merge-ready. Deferred consumers remain gated even after promotion.
+`CONTRACT_REVISION` and the export-test expectation are promoted to `v1.0.0` under
+the delegated owner's explicit authorization. Run the existing 25 contract tests,
+TypeScript check, lint and production build; record actual fresh evidence in the
+approval ledger and PR #2. Mark the PR ready for review and merge into `main`
+only if checks pass and GitHub permits its normal merge path. Pull the merged
+`main` locally and verify a clean working tree. Deferred consumers remain gated,
+and B01 must not start as part of this freeze.
 
 ### Required capability coverage
 
@@ -255,7 +265,7 @@ The external evidence-write `kind` is `NOTICE_INPUT`, `CITIZEN_STATEMENT`, or `C
 
 An optional `relatedCaseId` links a new dispute to an authorized prior Case belonging to the same Citizen; the server validates the link and carries it from draft to submitted Case. Finalized Case content is not edited to introduce a new dispute: corrections after closure use a linked Case and preserve the original history. A shopkeeper may inspect signed provenance without gaining the referenced beneficiary's identity/payment records; notice possession does not change this ownership boundary.
 
-The human-owner-approved bootstrap behavior for case-specific consent is that an authenticated Citizen reserves an owner-bound `caseId` before helper sharing, so a helper never needs blanket access to create their own authorization. Server saving is optional until connectivity returns; an in-memory draft has no persisted-success claim. The reserved owner record survives submission, while its mutable draft content is promoted to protected evidence and cleared or referenced rather than becoming a second historical evidence store. Submission atomically creates the Case at the same `caseId`; no `DRAFT` value is added to the approved Case enum. Full draft contracts, migration representation and runtime bootstrap/handoff implementation remain deferred; affected-developer signoff is pending.
+The human-owner-approved bootstrap behavior for case-specific consent is that an authenticated Citizen reserves an owner-bound `caseId` before helper sharing, so a helper never needs blanket access to create their own authorization. Server saving is optional until connectivity returns; an in-memory draft has no persisted-success claim. The reserved owner record survives submission, while its mutable draft content is promoted to protected evidence and cleared or referenced rather than becoming a second historical evidence store. Submission atomically creates the Case at the same `caseId`; no `DRAFT` value is added to the approved Case enum. Full draft contracts, migration representation and runtime bootstrap/handoff implementation remain deferred. Contract approval uses the designated owner's delegated authority.
 
 Source-record corrections and new evidence increment `evidenceVersion` or change the source-version manifest, invalidating resolution freshness. A correction never silently edits authoritative identity/payment records; Citizen-supplied corrections are evidence until the responsible synthetic service publishes a new source version. Signed Notices, prior Assessments, published rules, and audit events cannot be edited in place.
 
@@ -456,7 +466,7 @@ Switching Citizens increments an in-memory UI context generation, aborts pending
 
 ### 15. Contract evolution and readiness
 
-The human owner has approved the existing exported Zod schemas, inferred types and representative synthetic fixtures as the bounded baseline described above. Affected-developer signoff remains pending. Promotion to `v1.0.0` requires their explicit approval followed by the 25 contract tests, typecheck, lint and production build, with actual results recorded. The broader OpenAPI projection, permission/dispatch matrix, full draft/mock/AI interfaces and first direct-API integration tests remain deferred prerequisites for their consumers; bounded baseline approval does not mark them complete. Changes to approved/frozen shared contracts require explicit owner and affected-developer approval, one coordinated contract revision, corresponding fixture/test updates, and applicable integration evidence. Versioned `/api/v1` does not license silent incompatible changes within v1.
+The designated human owner, exercising the team's delegated shared-contract approval authority, authorized the bounded `v1.0.0` freeze of existing exported Zod schemas, inferred types and representative synthetic fixtures. Individual teammate signoff is no longer blocking; no individual reviews are asserted. Fresh 25-test/typecheck/lint/build evidence and GitHub's normal protections remain merge criteria. The broader OpenAPI projection, permission/dispatch matrix, full draft/mock/AI interfaces and first direct-API integration tests remain deferred prerequisites for their consumers; the bounded freeze does not mark them complete. Changes to approved/frozen shared contracts require the delegated owner's explicit approval, one coordinated contract revision, corresponding fixture/test updates, and applicable integration evidence. Versioned `/api/v1` does not license silent incompatible changes within v1.
 
 Named ownership and dependency order must be established before agents edit shared schemas, migrations, auth, or common dependencies. This spec assigns no person who was not named by the team. It creates no implementation tasks and grants no agent permission to work outside an assigned branch or module. Integration remains one application and one deployed vertical slice; a separate microservice, gateway, or contract registry is unnecessary.
 
@@ -575,21 +585,21 @@ For live AI evaluation, record fixture IDs, expected behavior, actual failures, 
 
 ### Freeze gate and unresolved blockers
 
-The six interview decisions remain settled. The human owner approved all 17 bounded contract decisions and the three clarifications above on 21 November 2026. The following statuses distinguish that approval from affected-developer signoff and operational integration evidence.
+The six interview decisions remain settled, with ADR 0005's shared-contract governance explicitly amended on 21 November 2026. The human owner approved all 17 bounded contract decisions, the three clarifications and the bounded `v1.0.0` freeze under delegated authority. The following statuses distinguish contract freeze from operational integration evidence.
 
 | Gate | Required concrete evidence before dependent work | Current status |
 | --- | --- | --- |
-| G1: named owner and developer signoff | Human accepts shared-schema/migration ownership; affected developers explicitly approve the reviewed baseline. | Requesting human owner explicitly accepted ownership and all 17 decisions. Affected-developer signoff remains pending; no teammate approval is recorded. |
-| G2: bounded baseline promotion and deferred interfaces | For the approved current export surface: affected-developer approval, promotion to `v1.0.0` and fresh 25-test/typecheck/lint/build evidence. Broader draft/endpoint/mock/AI contracts, grant/dispatch matrix, bootstrap implementation, OpenAPI projection and direct-API integration evidence remain separate gates. | Existing schemas/types/fixtures at `11de106` are human-owner-approved; 25 tests and typecheck/lint/build passed before this approval record. Revision stays `candidate-v1.0.0`. No unqualified G2 or integration clearance is claimed. |
+| G1: named owner and delegated authority | Designated human accepts shared-schema/migration ownership and exercises delegated shared-contract approval authority. | Owner explicitly accepted ownership, all 17 decisions and bounded freeze. Individual teammate signoff is no longer blocking under the ADR 0005 amendment; no individual reviews are asserted. |
+| G2: bounded freeze and deferred interfaces | For current exports: delegated owner authorization, `v1.0.0` and fresh 25-test/typecheck/lint/build evidence before normal protected merge. Broader draft/endpoint/mock/AI contracts, grant/dispatch matrix, bootstrap implementation, OpenAPI projection and direct-API integration evidence remain separate gates. | Baseline shapes/fixtures from `11de106` retained and promoted to `v1.0.0`; fresh 25/25 contract tests, typecheck, lint and production build all passed on 21 November 2026, as recorded in the approval ledger and PR. Normal GitHub merge protections still apply. No unqualified G2 or integration clearance is claimed. |
 | G3: exact crypto compatibility | Chosen JOSE library supports protected `alg: Ed25519`; run original/mutation/unknown-key fixtures without substituting `EdDSA`. | Pending Developer 2's feasibility work. Blocks Signed Notice implementation claims. |
 | G4: authoritative source | Supply/verify the requested official PDF or confirm the Markdown is its faithful complete extraction. | PDF absent; provisional-source limitation remains. |
 | G5: configured services | Verify Supabase/auth/database setup, real AI provider/model/quotas and server credentials, deployment access; document names of required variables without values. | Not established by this session. Blocks dependent integrations and live claims, not contract drafting. |
 | G6: demo parameters and narration | Owner reviews operational eligibility/routing values and synthetic cost assumptions; test Urdu scripts, dynamic/fallback coverage, and Citizen-authenticated consent handoff. | Existing fixture values approved as illustrative examples only. Operational policies, providers, recordings, handoff and accessibility evidence remain pending. |
 
-The human owner approved the bounded contract choices for reserved Case IDs, minimal administrative dispatch, scalar limits and terminal consent handling without authorizing their runtime implementation here. These choices project the existing ADRs. Full draft/endpoint contracts, mock interfaces, full AI output contracts, runtime authorization/persistence, OpenAPI, crypto/AI-provider feasibility, accessibility/deployment verification and affected-developer signoff remain explicitly pending. Approval of current exports does not waive those gates or authorize another backend feature. Surface compatibility failures explicitly; never hide them behind algorithm substitution or canned AI.
+The human owner approved the bounded contract choices for reserved Case IDs, minimal administrative dispatch, scalar limits and terminal consent handling without authorizing their runtime implementation here. These choices project the existing ADRs with ADR 0005's delegated-governance amendment. Full draft/endpoint contracts, mock interfaces, full AI output contracts, runtime authorization/persistence, OpenAPI, crypto/AI-provider feasibility and accessibility/deployment verification remain explicitly pending. Individual teammate signoff is no longer blocking; that is not a claim of individual approval. The freeze does not waive implementation gates or authorize B01 or another backend feature. Surface compatibility failures explicitly; never hide them behind algorithm substitution or canned AI.
 
 The source document names in the original engineering source-of-truth list differ from actual available brief filenames. This spec links to the actual files and records the missing-PDF limitation without modifying engineering instructions. The root specification entry links here so agents can find the local-tracker spec without maintaining duplicate contract text.
 
 ### Planning completion and evidence status
 
-All six approved architectural decisions remain recorded in the glossary/ADRs. The exported contract baseline and its 25-test/typecheck/lint/build evidence are established, and the human owner's explicit approval is recorded above. Affected developers have not yet approved; `candidate-v1.0.0` has not been promoted. This documentation update adds no schemas, tests, runtime behavior or new test-execution claim. It asserts no live provider success, implemented security enforcement, verified accessibility or deployment. The next promotion step is gated on explicit affected-developer approval, followed by fresh validation; the draft PR must expose that pending status.
+All six approved architectural decisions remain recorded in the glossary/ADRs, with ADR 0005's governance amendment explicitly recorded. The delegated human owner authorized the bounded `v1.0.0` freeze. Promotion changes the revision, its existing assertion and related documentation/comments only; it does not redesign schemas, alter synthetic fixtures or add runtime behavior. Fresh test/typecheck/lint/build results belong in the approval ledger and PR before normal protected merge. No individual developer reviews, live provider success, implemented security enforcement, verified accessibility or deployment are asserted. B01 remains unstarted.

@@ -7,7 +7,7 @@ export const ConsentActionSchema = z.enum([
   "ASSIGN_CASE", "ESCALATE_CASE",
 ]);
 export const ConsentRecipientTypeSchema = z.enum(["PRINCIPAL", "DEPARTMENT", "AI_PROCESSOR"]);
-// Disclosed purpose catalog awaits freeze; no invented production purpose enum.
+// Operational purpose allowlist remains deferred; Reference checks syntax only.
 export const ConsentPurposeSchema = ReferenceSchema;
 
 // TimestampSchema supplies fixed-width UTC seconds and optional fractional digits.

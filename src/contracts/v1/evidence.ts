@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ReferenceSchema, TimestampSchema, VersionSchema } from "./scalars";
 
-// These finite result/reason refinements are candidate-v1 projections of §4.
+// These finite result/reason refinements are frozen v1.0.0 projections of §4.
 export const SignatureResultSchema = z.enum(["VALID", "INVALID", "NOT_VERIFIED"]);
 export const ExpiryResultSchema = z.enum(["CURRENT", "EXPIRED", "NOT_YET_VALID", "UNKNOWN"]);
 export const RevocationResultSchema = z.enum(["ACTIVE", "REVOKED", "UNKNOWN"]);

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Exact scalar choices remain candidate-v1; see README approval ledger.
+// Scalar choices are frozen in bounded v1.0.0; see README approval ledger.
 export const ReferenceSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 export const EpochSecondsSchema = z.int().nonnegative();
 export const MoneyMinorSchema = z.int().nonnegative();

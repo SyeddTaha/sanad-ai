@@ -1,7 +1,7 @@
 # SANAD v1 contracts
 
-Revision: `candidate-v1.0.0`. Promotion target: `v1.0.0`.
-Status: **human-owner-approved bounded baseline; affected-developer signoff pending**.
+Revision: `v1.0.0`.
+Status: **frozen bounded contract baseline under delegated human-owner authority**.
 Transport namespace: `/api/v1`. This module has no routes or server services.
 
 Authority: [canonical spec](../../../.scratch/sanad-verification/spec.md),
@@ -9,7 +9,10 @@ Authority: [canonical spec](../../../.scratch/sanad-verification/spec.md),
 On 21 November 2026, the requesting human SANAD project owner explicitly accepted
 ownership of shared contracts and database migrations and approved all 17
 consolidated contract decisions, the bounded baseline and its explicit deferrals.
-This records that human's approval only. No affected-developer approval is recorded.
+The owner subsequently stated that the team delegates shared-contract approval
+to them and explicitly authorized this bounded freeze. Individual teammate
+signoff is no longer blocking under the [ADR 0005 governance amendment](../../../docs/adr/0005-shared-contracts-and-central-mock-services.md#governance-amendment--21-november-2026).
+No individual developer reviews or approvals are asserted.
 
 Import runtime schemas and inferred types from `@/contracts/v1`. Synthetic
 examples have a separate `@/contracts/v1/fixtures` entry so importing contracts
@@ -29,7 +32,7 @@ Parsing data never establishes identity, consent, source truth, or authorization
 Every concrete schema exports its corresponding inferred TypeScript type without
 the `Schema` suffix. Envelope/collection factories also expose generic
 `ApiSuccess<T>` and `ApiCollection<T>` types. `CONTRACT_REVISION` and
-`API_BASE_PATH` identify this candidate boundary. Scalars are shared exports.
+`API_BASE_PATH` identify this frozen bounded baseline. Scalars are shared exports.
 
 ```ts
 import { EvidencePassportSchema, ApiSuccessSchema } from "@/contracts/v1";
@@ -55,11 +58,13 @@ on 21 November 2026. Owner declaration: "I am the named human owner of shared
 contracts and database migrations." Approved baseline: the exported schemas,
 inferred types and synthetic fixtures at commit
 `11de106cd1e4ef8ac153c8c54aed07a40bee4156`. The three clarifications below constrain
-their future use without changing the schema shapes. The six ADRs remain in force.
+their future use without changing the schema shapes. The six ADRs remain in force,
+including ADR 0005's explicit delegated-approval amendment. The same human owner
+authorized promotion from `candidate-v1.0.0` to `v1.0.0` on 21 November 2026.
 
 | Decision | Owner-approved bounded decision | Source |
 | --- | --- | --- |
-| 1. Freeze boundary | Only current exports/types/fixtures are the approved baseline. `/api/v1` is retained; promotion to `v1.0.0` waits for explicit affected-developer approval and fresh checks. This bounded approval does not clear the broader G2 integration gate. | G1/G2; ADR 0005 |
+| 1. Freeze boundary | Only current exports/types/fixtures are frozen as `v1.0.0`; `/api/v1` is retained. The delegated owner explicitly authorized promotion; individual teammate signoff is no longer blocking. Fresh contract tests/typecheck/lint/build and normal GitHub protections remain merge criteria. This bounded freeze does not clear the broader G2 integration gate. | G1/G2; ADR 0005 amendment |
 | 2. Scalars and validation | Strict objects, no coercion, explicit nulls, UUID IDs, 1–64 ASCII references, UTC `Z` timestamps with full fractional precision, nonnegative safe integer money/epoch seconds, positive safe revisions, `PKR`, confidence 0–1. | Spec §2–5 |
 | 3. Limits | JWS limit 8,192 characters and meaningful resolution reason limit 2,000. JSON 64 KiB, message 16,384, dispute 2,000 and pagination 20/100 remain future endpoint requirements. Signed-fixture size verification remains pending. | Spec §2–3 |
 | 4. Roles and context | Current `CITIZEN`/`HELPER`/`OFFICER`/`ADMIN`/`AUDITOR`, principal and server-derived authorization context shapes, including nullable assignment/key scopes. Parsing grants no authority. | ADR 0002; spec §6 |
@@ -103,25 +108,25 @@ their future use without changing the schema shapes. The six ADRs remain in forc
 - Crypto feasibility (Developer 2).
 - AI provider feasibility.
 - Accessibility and deployment verification.
-- Affected-developer signoff.
 
 Operational catalogs, source-PDF verification and live demo parameters remain
 subject to their recorded gates; fixture examples are not operational approvals.
 
-### Promotion procedure
+### Freeze governance and merge criteria
 
-The revision remains `candidate-v1.0.0`; no production runtime behavior is added.
-The requesting human's approval is recorded; affected developers' approvals are
-**pending**, including Developer 2 and the frontend/AI consumers. Record each
-actual approver, the reviewed commit, explicit approval evidence and its date.
-Agent code-review reports and schema test results are not teammate signoff.
+The designated human backend lead and shared-contract/database-migration owner
+stated that the team delegates shared-contract approval to them and authorized
+the bounded `v1.0.0` freeze. This supersedes the previous individual-signoff gate;
+it does not fabricate teammate reviews. The revision and export assertion are
+promoted together. No schema shape, synthetic fixture or runtime feature changes.
 
-Only after affected developers explicitly approve: change `CONTRACT_REVISION`
-and its export-test expectation to `v1.0.0`, update revision/status documentation,
-and run `npm run test:contracts` (25 existing tests), `npm run typecheck`,
-`npm run lint` and `npm run build`. Record actual results for that promoted commit
-and update the PR into `main`; no promotion, merge or integration clearance is
-implied before then. Deferred interfaces and integrations retain their own gates.
+Merge PR #2 only after `npm run test:contracts` (25 existing tests),
+`npm run typecheck`, `npm run lint` and `npm run build` pass on the promoted
+source. Record actual evidence in this ledger and the PR, mark the PR ready for
+review, and use GitHub's normal merge path without bypassing branch protection.
+Future shared-contract changes require the delegated owner's explicit approval
+and coordinated contract/fixture/test updates. Deferred interfaces and
+integrations retain their own gates. B01 is not authorized by this freeze.
 
 ## Scope and validation
 
@@ -135,8 +140,8 @@ are provided here. `VALID` examples are simulated finding data only.
 
 The official PDF is absent; the available Markdown brief is provisional (G4).
 G5/G6 services and narration remain outside this task. The human-owner approval
-above accepts the bounded contract implementation; dependent work still requires
-the applicable developer signoff and deferred integration gates.
+above freezes the bounded contract baseline; dependent work still requires
+its applicable deferred integration gates.
 
 Commands: `npm run test:contracts`, `npm run typecheck`, `npm run lint`,
 `npm run build`.
@@ -162,8 +167,28 @@ Approval-record verification on 21 November 2026: `git diff --check` passed;
 all 17 local links/anchors in the three changed Markdown files resolved; all 17
 approval entries and three clarifications were present; schema/type/fixture/test
 sources and package files were unchanged. Contract tests, typecheck, lint and
-build were not rerun for this documentation-only record. Their required fresh
-post-signoff promotion run remains pending.
+build were not rerun for that documentation-only record. Fresh promoted-source
+validation is recorded separately below; that historical record is not its evidence.
+
+### Frozen v1.0.0 verification — 21 November 2026
+
+The following checks were rerun on the promoted `v1.0.0` source under the
+delegated owner's freeze authorization, before committing and pushing the freeze:
+
+| Check | Actual result |
+| --- | --- |
+| `npm run test:contracts` | Exit 0; 25 passed, 0 failed, 0 skipped, including the `v1.0.0` export assertion. |
+| `npm run typecheck` | Exit 0; no diagnostics. |
+| `npm run lint` | Exit 0; no diagnostics. |
+| `npm run build` | Exit 0; production compilation/typecheck/static generation completed. Same ignored parent-directory lockfile warning; no build failure. |
+| Freeze consistency | Exit 0; 20 local links/anchors and all 17 approval entries checked; 25 existing tests retained; schema logic, fixtures and dependencies preserved. |
+| `git diff --check` | Exit 0. |
+
+This evidence establishes contract validation and starter-application build
+compatibility only. Runtime authorization, persistence, crypto, AI, accessibility
+and deployment are not verified. All explicit deferred gates remain in force.
+GitHub review/check/protection status must still permit the normal PR merge;
+no individual developer reviews or approvals are fabricated. B01 is not started.
 
 ## Standards review
 
@@ -180,9 +205,10 @@ valid RFC3339 fractions beyond milliseconds. Consent chronology now compares
 validated UTC seconds and full fractional precision. A public-schema regression
 failed before the fix and passed afterward. Recheck: no remaining Spec findings.
 
-Review totals: Standards 0 remaining; Spec 0 remaining. Human-owner approval is
-now recorded above; affected-developer approval remains pending. Code review is
-not teammate signoff, contract promotion or integration verification.
+Historical implementation review totals: Standards 0 remaining; Spec 0 remaining.
+Delegated human-owner approval and the bounded freeze are recorded above.
+Individual reviews are not asserted or required by that delegation. Code review
+and schema checks do not establish runtime integration verification.
 
 ## Changed files
 
@@ -201,3 +227,4 @@ All paths below are relative to `src/contracts/v1/` except the package files.
 | `api.test.ts`, `assessment.test.ts`, `case.test.ts`, `consent.test.ts`, `evidence.test.ts`, `exports.test.ts`, `notice.test.ts` | 25 public-boundary behavior tests |
 | `README.md` | Approval ledger, import guide, limitations and validation/review evidence |
 | Root `package.json`, `package-lock.json` | Pinned Zod and test runner; test and typecheck scripts |
+| Root `SPEC.md`, `.scratch/sanad-verification/spec.md`, `docs/adr/0005-shared-contracts-and-central-mock-services.md` | Canonical approval/freeze status and delegated contract-approval governance |
