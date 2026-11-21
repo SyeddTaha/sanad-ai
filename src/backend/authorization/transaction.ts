@@ -18,7 +18,7 @@ export async function audit(tx: Transaction, action: string, outcome = "ALLOWED"
 
 /** No external network/AI calls in work. Its DB writes and audit commit together. */
 export async function inAuthorizationTransaction<T>(request: NextRequest, requestId: string, action: string,
-  work: (tx: Transaction) => Promise<T>, dependencies: Dependencies = {}): Promise<T> {
+  work: (tx: Transaction) => Promise<T>, dependencies: Dependencies = {}, prepare?: () => Promise<void>): Promise<T> {
   let db: Database | undefined;
   let actorId: string | undefined;
   try {
@@ -26,10 +26,12 @@ export async function inAuthorizationTransaction<T>(request: NextRequest, reques
     actorId = verified.principal.id;
     // Only decoded after B01 has verified this exact token and its session binding.
     const session = JSON.parse(Buffer.from(requestToken(request).split(".")[1], "base64url").toString()).session_id;
+    // Consume/validate client streams after authentication and before acquiring any DB locks.
+    await prepare?.();
     db = await (dependencies.database ?? connectDatabase)();
     await db.query("begin");
-    await db.query("set local lock_timeout = '5s'");
-    await db.query("set local statement_timeout = '15s'");
+    await db.query("set local lock_timeout = '15s'");
+    await db.query("set local statement_timeout = '20s'");
     // Small prototype catalogs: shared table locks also prevent concurrent role/membership inserts.
     await db.query("lock table public.profiles, public.role_assignments, public.department_memberships in share mode");
     await db.query("select id from auth.sessions where id=$1 and user_id=$2 for share", [session, actorId]);

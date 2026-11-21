@@ -21,15 +21,19 @@ async function readBody(request: NextRequest) {
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => { reject(new AuthFailure("MALFORMED_REQUEST")); void reader.cancel().catch(() => {}); }, 5000);
+  });
   try {
     while (true) {
-      const { value, done } = await reader.read();
+      const { value, done } = await Promise.race([reader.read(), deadline]);
       if (done) break;
       size += value.byteLength;
       if (size > 8192) { await reader.cancel(); throw new AuthFailure("PAYLOAD_TOO_LARGE"); }
       chunks.push(value);
     }
-  } finally { reader.releaseLock(); }
+  } finally { clearTimeout(timeout); reader.releaseLock(); }
   try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); }
   catch { throw new AuthFailure("MALFORMED_REQUEST"); }
 }
@@ -39,6 +43,7 @@ export async function idempotent<T>(tx: Transaction, operation: string, key: str
   const { rows } = await tx.db.query("select digest,result from public.consent_operation_keys where actor_id=$1 and operation=$2 and key=$3", [tx.identity.principal.id, operation, key]);
   if (rows[0]) {
     if (rows[0].digest !== digest) throw new AuthFailure("IDEMPOTENCY_CONFLICT");
+    await audit(tx, "CONSENT_RETRY");
     return rows[0].result as T;
   }
   const result = await work();
@@ -49,6 +54,8 @@ export async function idempotent<T>(tx: Transaction, operation: string, key: str
 
 export async function handleConsent(request: NextRequest, operation: Operation, target?: string, dependencies: Dependencies = {}) {
   const requestId = crypto.randomUUID();
+  let prepared: unknown;
+  let key: string;
   try {
     const data = await inAuthorizationTransaction(request, requestId, "CONSENT_" + operation.toUpperCase(), async (tx) => {
       if (target && !IdSchema.safeParse(target).success) throw new AuthFailure("VALIDATION_FAILED");
@@ -69,14 +76,9 @@ export async function handleConsent(request: NextRequest, operation: Operation, 
         await audit(tx, "CONSENT_LIST", "ALLOWED", caseId);
         return { items: rows.map(consentRecord), nextCursor: null };
       }
-      const schema = operation === "reserve" ? ReserveCaseRequestSchema : operation === "grant" ? CreateConsentRequestSchema : RevokeConsentRequestSchema;
-      const body = schema.safeParse(await readBody(request));
-      if (!body.success) throw new AuthFailure("VALIDATION_FAILED");
-      const key = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/).safeParse(request.headers.get("idempotency-key"));
-      if (!key.success) throw new AuthFailure("MALFORMED_REQUEST");
-      return idempotent(tx, operation + (target ? ":" + target : ""), key.data, body.data, async () => {
+      return idempotent(tx, operation + (target ? ":" + target : ""), key, prepared, async () => {
         if (operation === "grant") {
-          const grant = CreateConsentRequestSchema.parse(body.data);
+          const grant = CreateConsentRequestSchema.parse(prepared);
           const policy = ConsentPurposes[grant.purpose];
           if (grant.recipientType !== policy.recipientType || !grant.actions.every((action) => (policy.actions as readonly string[]).includes(action))) throw new AuthFailure("VALIDATION_FAILED");
           const { rows: [clock] } = await tx.db.query("select clock_timestamp() as time");
@@ -96,7 +98,7 @@ export async function handleConsent(request: NextRequest, operation: Operation, 
           return consentRecord(row);
         }
         if (operation === "revoke") {
-          const { expectedVersion } = RevokeConsentRequestSchema.parse(body.data);
+          const { expectedVersion } = RevokeConsentRequestSchema.parse(prepared);
           const { rows: [grant] } = await tx.db.query("select * from public.consent_grants where id=$1 for update", [target]);
           if (grant.version !== expectedVersion) throw new AuthFailure("STALE_VERSION");
           if (grant.revoked_at !== null) throw new AuthFailure("INVALID_TRANSITION");
@@ -110,8 +112,16 @@ export async function handleConsent(request: NextRequest, operation: Operation, 
         await audit(tx, "CASE_RESERVED", "ALLOWED", result.caseId);
         return result;
       });
-    }, dependencies);
+    }, dependencies, async () => {
+      if (operation === "list") return;
+      const schema = operation === "reserve" ? ReserveCaseRequestSchema : operation === "grant" ? CreateConsentRequestSchema : RevokeConsentRequestSchema;
+      const parsed = schema.safeParse(await readBody(request));
+      if (!parsed.success) throw new AuthFailure("VALIDATION_FAILED");
+      prepared = parsed.data;
+      const parsedKey = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/).safeParse(request.headers.get("idempotency-key"));
+      if (!parsedKey.success) throw new AuthFailure("MALFORMED_REQUEST");
+      key = parsedKey.data;
+    });
     return privateJson({ data, requestId }, operation === "reserve" || operation === "grant" ? 201 : 200);
   } catch (error) { return errorJson(error, requestId); }
 }
-

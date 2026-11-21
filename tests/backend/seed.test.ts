@@ -50,4 +50,3 @@ test("synthetic setup provisions every role and two citizens without duplicating
     assert.equal((await db.query("select * from public.department_memberships")).rows.length, 1);
   } finally { await db.close(); }
 });
-

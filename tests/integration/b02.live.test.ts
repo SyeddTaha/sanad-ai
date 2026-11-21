@@ -91,6 +91,9 @@ test("B02 live consent HTTP, authorization, transactions and revocation", async 
       await error(await request(`/api/v1/cases/${caseId}/consents`, "CITIZEN_A", { ...helperBody(), actions: ["RESOLVE_CASE"] }), 422, "VALIDATION_FAILED");
       const shared = await grant(helperBody());
       assert.equal(await read("HELPER", caseId), ids.get("CITIZEN_A"));
+      const completed = { citizenId: await read("HELPER", caseId) };
+      const replay = () => withAuthorizedCase(serviceRequest("HELPER"), permission(caseId, "READ_EVIDENCE"), async () => completed);
+      assert.deepEqual(await replay(), completed);
       await assert.rejects(withAuthorizedCase(serviceRequest("HELPER"), permission(caseId, "RESOLVE_CASE"), async () => null));
       for (const actor of ["ADMIN", "AUDITOR"]) {
         await assert.rejects(read(actor, caseId));
@@ -100,6 +103,7 @@ test("B02 live consent HTTP, authorization, transactions and revocation", async 
       assert.equal(await read("OFFICER", caseId, "synthetic_department_review"), ids.get("CITIZEN_A"));
       assert.equal((await revoke(shared.id)).status, 200);
       await assert.rejects(read("HELPER", caseId));
+      await assert.rejects(replay(), { code: "CONSENT_REQUIRED" });
       assert.equal(await read("OFFICER", caseId, "synthetic_department_review"), ids.get("CITIZEN_A"));
       await db.query("update public.cases set assigned_department_id=null,assigned_officer_id=null where id=$1", [caseId]);
       await assert.rejects(read("OFFICER", caseId, "synthetic_department_review"));
@@ -156,8 +160,9 @@ test("B02 live consent HTTP, authorization, transactions and revocation", async 
         // Attach the rejection assertion before the transaction releases its lock.
         outcome = assert.rejects(write, { code: "CONSENT_REQUIRED" });
         await blockedBy(pid);
-        await db.query("update public.consent_grants set revoked_at=clock_timestamp() where id=$1", [shared.id]);
-        await db.query("insert into public.audit_events(request_id,actor_id,action,outcome,target_id,authorization_ref) values($1,$2,'CONSENT_WITHDRAWN','ALLOWED',$3,$4)", [crypto.randomUUID(), ids.get("CITIZEN_A"), caseId, shared.id]);
+        await db.query(`with revoked as (update public.consent_grants set revoked_at=clock_timestamp() where id=$1 returning id)
+          insert into public.audit_events(request_id,actor_id,action,outcome,target_id,authorization_ref)
+          select $2,$3,'CONSENT_WITHDRAWN','ALLOWED',$4,id from revoked`, [shared.id, crypto.randomUUID(), ids.get("CITIZEN_A"), caseId]);
         await db.query("commit");
       } finally { await db.query("rollback"); }
       await outcome;

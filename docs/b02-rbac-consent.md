@@ -152,7 +152,10 @@ grants keep review authorized. Helper grants never substitute for department gra
 consent reads reconcile expired sharing lazily and append one interruption event;
 access denies immediately regardless of recorded status. No expiry worker.
 
-Events: `CASE_RESERVED`, `CONSENT_GRANTED`, `CONSENT_WITHDRAWN`, `CONSENT_LIST`,
+Client JSON streams are authenticated, bounded to 8192 bytes and five seconds,
+and validated before opening a database transaction or acquiring locks.
+
+Events: `CASE_RESERVED`, `CONSENT_GRANTED`, `CONSENT_WITHDRAWN`, `CONSENT_LIST`, `CONSENT_RETRY`,
 `CONSENT_INTERRUPTED`, `CONSENT_RESTORED`, requested protected action decisions,
 and sanitized failed/denied consent attempts. Records hold actor, action, outcome,
 request ID, timestamp and optional opaque target/grant reference. No private

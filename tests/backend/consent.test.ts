@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { before, after, test } from "node:test";
 import { readFile, readdir } from "node:fs/promises";
+import { setImmediate } from "node:timers/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { NextRequest } from "next/server";
 import { handleConsent } from "../../src/backend/consent/http";
@@ -82,6 +83,9 @@ test("citizen creates scoped sharing; helper cannot self-authorize or exceed sco
   assert.deepEqual((await (await call(1, "grant", caseId, body, key)).json()).data, data);
   assert.equal((await call(1, "grant", caseId, { ...body, actions: ["READ_CASE"] }, key)).status, 409);
   assert.equal(await access(3, "READ_EVIDENCE"), "protected result");
+  const replay = () => withAuthorizedCase(request(3), { caseId, action: "READ_EVIDENCE", purpose: "synthetic_helper_assistance" },
+    async () => ({ content: "Previously completed synthetic protected response" }), dependencies(3));
+  assert.deepEqual(await replay(), { content: "Previously completed synthetic protected response" });
   await assert.rejects(access(3, "RESOLVE_CASE"), { code: "CONSENT_REQUIRED" });
   const list = ConsentListResponseSchema.parse(await (await call(1, "list", caseId)).json());
   assert.equal(list.data.items.length, 1);
@@ -90,6 +94,39 @@ test("citizen creates scoped sharing; helper cannot self-authorize or exceed sco
   assert.equal((await call(1, "revoke", data.id, { expectedVersion: 1 })).status, 200);
   await assert.rejects(access(3, "READ_EVIDENCE"), { code: "CONSENT_REQUIRED" });
   await assert.rejects(access(3, "ADD_EVIDENCE"), { code: "CONSENT_REQUIRED" });
+  await assert.rejects(replay(), { code: "CONSENT_REQUIRED" });
+});
+
+test("unfinished HTTP bodies cannot hold authorization database locks", async () => {
+  let finish!: () => void;
+  let finished = false;
+  const body = new ReadableStream<Uint8Array>({ start(controller) {
+    controller.enqueue(new TextEncoder().encode("{}"));
+    finish = () => { finished = true; controller.close(); };
+  } });
+  const deps = dependencies(1);
+  const original = deps.database;
+  deps.database = async () => {
+    if (!finished) throw new Error("Refuse database transaction while the client body is unfinished");
+    return original();
+  };
+  const headers = Object.fromEntries(request(1, {}).headers.entries());
+  const init = { method: "POST", headers, body, duplex: "half" as const };
+  const pending = handleConsent(new NextRequest("https://sanad.test/api/v1/case-drafts", init), "reserve", undefined, deps);
+  await setImmediate();
+  finish();
+  assert.equal((await pending).status, 201);
+});
+
+test("body deadline rejects an unfinished stream even when its prefix is valid JSON", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const body = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode("{}")); } });
+  const headers = Object.fromEntries(request(1, {}).headers.entries());
+  const init = { method: "POST", headers, body, duplex: "half" as const };
+  const pending = handleConsent(new NextRequest("https://sanad.test/api/v1/case-drafts", init), "reserve", undefined, dependencies(1));
+  await setImmediate();
+  t.mock.timers.tick(5001);
+  assert.equal((await pending).status, 400);
 });
 
 const departmentBody = () => ({ recipientType: "DEPARTMENT", recipientId: id(30), purpose: "synthetic_department_review", actions: ["READ_CASE", "READ_EVIDENCE", "REVIEW_CASE", "RESOLVE_CASE", "CLOSE_CASE"], expiresAt: new Date(Date.now() + 3600000).toISOString() });
@@ -180,6 +217,3 @@ test("protected operations reload server roles and active status instead of trus
   try { assert.equal((await call(1, "list", caseId)).status, 403); }
   finally { await db.query("update public.profiles set active=true where id=$1", [id(1)]); }
 });
-
-
-
