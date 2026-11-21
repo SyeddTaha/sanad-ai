@@ -1,4 +1,7 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+SANAD uses Next.js, Supabase Auth and PostgreSQL. For B01 setup, migrations,
+synthetic accounts and frontend/backend authentication integration, see
+[the backend foundation guide](docs/backend-foundation.md) and
+[verification evidence](docs/b01-verification.md). The minimal sign-in page is `/login`.
 
 ## Getting Started
 
