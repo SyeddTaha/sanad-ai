@@ -8,3 +8,5 @@ export const PublishRuleRequestSchema = z.strictObject({ programRef: z.literal(S
 export const PublishedRuleSchema = z.strictObject({ programRef: z.literal(SYNTHETIC_PROGRAM_REF),
   policyLabel: z.literal(SYNTHETIC_POLICY_LABEL), rule: RuleVersionSchema });
 export const RuleResponseSchema = ApiSuccessSchema(PublishedRuleSchema);
+export type PublishRuleRequest=z.infer<typeof PublishRuleRequestSchema>;
+export type PublishedRule=z.infer<typeof PublishedRuleSchema>;

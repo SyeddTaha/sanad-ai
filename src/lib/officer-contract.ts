@@ -27,3 +27,12 @@ export const AuditMetadataResponseSchema=ApiSuccessSchema(ApiCollectionSchema(Au
 export const SyntheticProgramInputSchema=z.strictObject({id:IdSchema,caseId:IdSchema,version:VersionSchema,source:z.literal("SYNTHETIC_DEMO"),
   recipientMatch:z.enum(["MATCH","AMBIGUOUS","UNKNOWN"]),enrollment:z.enum(["ACTIVE","INACTIVE","UNKNOWN"]),monthlyIncomeMinor:MoneyMinorSchema.nullable(),recordedBy:IdSchema,recordedAt:TimestampSchema});
 export const ProgramInputsResponseSchema=ApiSuccessSchema(ApiCollectionSchema(SyntheticProgramInputSchema));
+export type AssignCaseRequest=z.infer<typeof AssignCaseRequestSchema>;
+export type SetPriorityRequest=z.infer<typeof SetPriorityRequestSchema>;
+export type OfficerReasonRequest=z.infer<typeof OfficerReasonRequestSchema>;
+export type CaseVersionRequest=z.infer<typeof CaseVersionRequestSchema>;
+export type DispatchItem=z.infer<typeof DispatchItemSchema>;
+export type OfficerQueueItem=z.infer<typeof OfficerQueueItemSchema>;
+export type CaseDecision=z.infer<typeof CaseDecisionSchema>;
+export type AuditMetadata=z.infer<typeof AuditMetadataSchema>;
+export type SyntheticProgramInput=z.infer<typeof SyntheticProgramInputSchema>;
