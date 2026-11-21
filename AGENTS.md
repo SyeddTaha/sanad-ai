@@ -5,10 +5,10 @@ SANAD is a prototype for Coder's Cup 2026.
 Deadline: 22 November 2026, 6 PM PKT.
 
 ## Source of truth
-1. docs/brief/official-hackathon.pdf
+1. docs/brief/AI_Hackathon_Problem_Statement.md
 2. SPEC.md and agreed API contracts
 3. TASKS.md
-4. docs/brief/sanad-handoff.md
+4. docs/brief/SANAD_Hackathon_Master_Handoff.md
 
 The official brief takes priority on conflicts.
 

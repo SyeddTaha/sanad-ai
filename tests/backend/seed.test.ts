@@ -34,7 +34,7 @@ test("synthetic setup provisions every role and two citizens without duplicating
     await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
       create schema auth; create table auth.users(id uuid primary key);
       create table auth.sessions(id uuid primary key,user_id uuid not null,not_after timestamptz);`);
-    assert.equal((await applyMigrations(sql)).length, 2);
+    assert.equal((await applyMigrations(sql)).length, 3);
     assert.deepEqual(await applyMigrations(sql), []);
     const passwords = Object.fromEntries(["CITIZEN_A", "CITIZEN_B", "HELPER", "OFFICER", "ADMIN", "AUDITOR"]
       .map((name) => ["DEMO_" + name + "_PASSWORD", "synthetic-test-password-9381"]));

@@ -119,8 +119,9 @@ defaults. Add reviewed policies/operations; never open permissive RLS to integra
 
 No credentials or service blockers remain in this workspace. Teammates must set
 their own ignored environment values and deploy-time secrets; passwords are
-available only in the configured local credential file. The official PDF and
-handoff file referenced by AGENTS.md are absent, so source fidelity is unverified.
+available only in the configured local credential file. For B02 the owner confirmed
+[the Markdown challenge brief](brief/AI_Hackathon_Problem_Statement.md) as official
+requirements and [the master handoff](brief/SANAD_Hackathon_Master_Handoff.md) as context.
 Authentication audit writes fail closed but cannot share a transaction with
 external Supabase Auth effects. Session refresh and browser/device/deployment
 verification remain outside the demonstrated B01 behavior.

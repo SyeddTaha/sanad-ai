@@ -30,7 +30,7 @@ test("B01 live Supabase/PostgreSQL/HTTP acceptance", async (t) => {
     await t.test("database connects and applied migrations are current on repeat", async () => {
       assert.deepEqual(await applyMigrations(db), []);
       const { rows } = await db.query("select count(*)::int as count from sanad_private.migrations");
-      assert.equal(rows[0].count, 2);
+      assert.equal(rows[0].count, 3);
     });
     await t.test("all five roles and two citizens provision idempotently against real Auth and PostgreSQL", async () => {
       accounts = await provisionDemoAccounts(clients.server.auth.admin, db);
