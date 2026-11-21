@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState, type FormEvent, type ReactNode } from "react";
 import type { CaseStatus } from "@/contracts/v1/case";
-import { citizenUiFixture } from "./citizen-ui-fixtures";
 import { citizenText, useCitizenLanguage } from "./citizen-language";
 import type { CitizenMessageKey } from "./citizen-copy";
+import { syntheticCitizenViewAdapter } from "./citizen-view-adapter";
 
 export type CitizenScreenName = "home" | "verify" | "results" | "dispute" | "case" | "consent";
 
@@ -54,6 +54,7 @@ function FindingRow({
 function HomeScreen() {
   const { language } = useCitizenLanguage();
   const text = (key: CitizenMessageKey) => citizenText(language, key);
+  const casePreview = syntheticCitizenViewAdapter.getCasePreview();
 
   return (
     <main className="citizen-main" id="main-content">
@@ -102,8 +103,8 @@ function HomeScreen() {
       <section aria-labelledby="citizen-sample-case-title" className="citizen-sample-case">
         <div>
           <p className="citizen-eyebrow">{text("demoCaseTitle")}</p>
-          <h2 id="citizen-sample-case-title">{citizenUiFixture.caseReference}</h2>
-          <p>{text("demoCaseStatus")}</p>
+          <h2 id="citizen-sample-case-title">{casePreview.reference}</h2>
+          <p>{text(caseStatusCopy[casePreview.status])}</p>
         </div>
         <Link className="citizen-text-link" href="/citizen/case">{text("viewCase")}</Link>
       </section>
@@ -166,7 +167,7 @@ function ResultsScreen() {
     <main className="citizen-main" id="main-content">
       <PageIntro eyebrow={text("passportTitle")} title={text("resultsHeading")} description={text("resultsCopy")} />
       <section aria-label={text("resultsHeading")} className="citizen-evidence-passport">
-        {citizenUiFixture.findings.map(({ key, status }) => {
+        {syntheticCitizenViewAdapter.getEvidenceFindings().map(({ key, status }) => {
           const copyByFinding = {
             authenticity: ["authenticityFinding", "authenticityFindingDetail"],
             payment: ["paymentFinding", "paymentFindingDetail"],
@@ -251,9 +252,19 @@ const caseSteps: { key: CitizenMessageKey; status: CaseStatus }[] = [
   { key: "statusClosed", status: "CLOSED" },
 ];
 
+const caseStatusCopy: Record<CaseStatus, CitizenMessageKey> = {
+  SUBMITTED: "statusSubmitted",
+  UNDER_REVIEW: "statusReview",
+  NEEDS_EVIDENCE: "statusNeedEvidence",
+  PENDING_CONSENT: "statusPendingConsent",
+  RESOLVED: "statusResolved",
+  CLOSED: "statusClosed",
+};
+
 function CaseScreen() {
   const { language } = useCitizenLanguage();
   const text = (key: CitizenMessageKey) => citizenText(language, key);
+  const casePreview = syntheticCitizenViewAdapter.getCasePreview();
 
   return (
     <main className="citizen-main" id="main-content">
@@ -261,11 +272,11 @@ function CaseScreen() {
       <section aria-labelledby="citizen-case-number" className="citizen-case-summary">
         <div>
           <p className="citizen-eyebrow">{text("caseLabel")}</p>
-          <h2 id="citizen-case-number">{citizenUiFixture.caseReference}</h2>
+          <h2 id="citizen-case-number">{casePreview.reference}</h2>
         </div>
         <div className="citizen-case-status">
           <span>{text("currentStatus")}</span>
-          <strong>{text("statusReview")}</strong>
+          <strong>{text(caseStatusCopy[casePreview.status])}</strong>
         </div>
       </section>
 
@@ -274,7 +285,7 @@ function CaseScreen() {
         <p>{text("workflowDescription")}</p>
         <ol className="citizen-timeline">
           {caseSteps.map(({ key, status }, index) => {
-            const current = status === citizenUiFixture.caseStatus;
+            const current = status === casePreview.status;
             const complete = index === 0;
             return (
               <li aria-current={current ? "step" : undefined} className={current ? "is-current" : ""} key={status}>
@@ -368,7 +379,7 @@ function ConsentScreen() {
       <PageIntro eyebrow={text("navConsent")} title={text("consentHeading")} description={text("consentCopy")} />
       <p className="citizen-privacy-note">{text("withdrawRule")}</p>
       <section aria-label={text("consentHeading")} className="citizen-consent-list">
-        {citizenUiFixture.consentGrants.map(({ recipient }) => {
+        {syntheticCitizenViewAdapter.getConsentPreviews().map(({ recipient }) => {
           const grantCopy = consentGrantCopy[recipient];
           return (
             <ConsentGrant
