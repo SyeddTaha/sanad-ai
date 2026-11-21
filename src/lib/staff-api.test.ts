@@ -11,6 +11,7 @@ import {
   createStaffApi,
   getStaffModeLabel,
   isLiveResolutionAvailable,
+  isLiveAssessmentFresh,
 } from "./staff-api";
 
 test("creates and reuses one idempotency key for a logical mutation", () => {
@@ -107,6 +108,14 @@ test("live resolution stays disabled until an Assessment ID is obtained", () => 
   assert.equal(isLiveResolutionAvailable("live", ""), false);
   assert.equal(isLiveResolutionAvailable("live", "70000000-0000-4000-8000-000000000001"), true);
   assert.equal(isLiveResolutionAvailable("fixture", null), true);
+});
+
+test("live resolution stays disabled when evidence has changed after Assessment creation", () => {
+  const assessmentId = "70000000-0000-4000-8000-000000000001";
+  assert.equal(isLiveAssessmentFresh(assessmentId, 4, 4), true);
+  assert.equal(isLiveAssessmentFresh(assessmentId, 4, 5), false);
+  assert.equal(isLiveAssessmentFresh(null, 4, 4), false);
+  assert.equal(isLiveAssessmentFresh(assessmentId, null, 4), false);
 });
 
 test("repeat success starts a new logical mutation", () => {

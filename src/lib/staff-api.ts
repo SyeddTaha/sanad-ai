@@ -182,6 +182,17 @@ export function isLiveResolutionAvailable(mode: StaffApiMode, assessmentId: stri
   return mode === "fixture" ? true : assessmentId !== null && assessmentId.trim().length > 0;
 }
 
+export function isLiveAssessmentFresh(
+  assessmentId: string | null,
+  assessmentEvidenceVersion: number | null,
+  currentEvidenceVersion: number,
+) {
+  return assessmentId !== null
+    && assessmentId.trim().length > 0
+    && assessmentEvidenceVersion !== null
+    && assessmentEvidenceVersion === currentEvidenceVersion;
+}
+
 async function request(path: string, init: RequestInit, action?: string, keys?: Map<string, IdempotencyEntry>) {
   const headers = new Headers(init.headers);
   if (init.method && init.method !== "GET") {

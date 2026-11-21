@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import type { Case } from "@/contracts/v1/case";
 import type { CaseDecision } from "@/lib/staff-api";
 import { z } from "zod";
+import type { Assessment } from "@/contracts/v1";
 import { EvidenceItemSchema } from "@/lib/case-contract";
-import { createStaffApi, getStaffApiMode, isLiveResolutionAvailable, StaffApiError } from "@/lib/staff-api";
+import { createStaffApi, getStaffApiMode, isLiveAssessmentFresh, isLiveResolutionAvailable, StaffApiError } from "@/lib/staff-api";
 import { fixtureCaseDetails, fixtureDecisions, fixtureEvidence } from "@/lib/staff-fixtures";
 
 type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
@@ -20,6 +21,8 @@ export default function OfficerCasePage() {
   const [history, setHistory] = useState<unknown[]>([]);
   const [reason, setReason] = useState("");
   const [assessmentId, setAssessmentId] = useState("");
+  const [assessmentEvidenceVersion, setAssessmentEvidenceVersion] = useState<number | null>(null);
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -46,6 +49,9 @@ export default function OfficerCasePage() {
         setDecisions(decisionResult?.items ?? []);
         setHistory(historyResult?.items ?? []);
       }
+      setAssessmentId("");
+      setAssessmentEvidenceVersion(null);
+      setAssessment(null);
     }).catch((cause) => active && setError(cause instanceof Error ? cause.message : "Case unavailable"))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
@@ -78,6 +84,9 @@ export default function OfficerCasePage() {
           : { expectedVersion: caseItem.version, reason };
         const result = await api.mutate(action, caseId, body);
         setCaseItem(result.case);
+        setAssessmentId("");
+        setAssessmentEvidenceVersion(null);
+        setAssessment(null);
         setMessage(`${action} completed.`);
       }
     } catch (cause) {
@@ -96,6 +105,8 @@ export default function OfficerCasePage() {
       const api = createStaffApi();
       if (api.mode === "fixture") {
         setAssessmentId("70000000-0000-4000-8000-000000000001");
+        setAssessmentEvidenceVersion(caseItem.evidenceVersion);
+        setAssessment(null);
         setMessage("Fixture demo: assessment ID selected for demonstration only.");
       } else {
         const assessment = await api.createAssessment(caseId, {
@@ -104,6 +115,8 @@ export default function OfficerCasePage() {
         });
         if (!assessment) throw new Error("ASSESSMENT_UNAVAILABLE: no authorized Assessment route result");
         setAssessmentId(assessment.id);
+        setAssessmentEvidenceVersion(assessment.evidenceVersion);
+        setAssessment(assessment);
         setMessage(`Authorized Assessment ${assessment.id.slice(0, 8)} created for evidence version ${assessment.evidenceVersion}.`);
       }
     } catch (cause) {
@@ -119,8 +132,9 @@ export default function OfficerCasePage() {
       setError("Resolution requires a written reason.");
       return;
     }
-    if (!isLiveResolutionAvailable(getStaffApiMode(), assessmentId || null)) {
-      setError("Live resolution is unavailable until an authorized Assessment is created for the current evidence.");
+    if (!isLiveResolutionAvailable(getStaffApiMode(), assessmentId || null)
+      || !isLiveAssessmentFresh(assessmentId || null, assessmentEvidenceVersion, caseItem.evidenceVersion)) {
+      setError("Live resolution is unavailable until a fresh authorized Assessment is created for the current evidence.");
       return;
     }
     if (!window.confirm("Resolve this case? This does not approve payment or eligibility.")) return;
@@ -166,7 +180,17 @@ export default function OfficerCasePage() {
           </section>
           <section className="rounded border border-slate-200 bg-white p-4">
             <h2 className="font-semibold">Latest assessment</h2>
-            <p className="mt-2 text-sm text-slate-600">Assessment listing is not exposed in the current D02 handoff. UNKNOWN findings remain unknown and are never converted into approval.</p>
+            {!assessment ? (
+              <p className="mt-2 text-sm text-slate-600">No authorized live Assessment is loaded for this evidence version. UNKNOWN findings remain unknown and are never converted into approval.</p>
+            ) : (
+              <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                <div><dt className="text-xs text-slate-500">Assessment</dt><dd>{assessment.id}</dd></div>
+                <div><dt className="text-xs text-slate-500">Evidence version</dt><dd>{assessment.evidenceVersion}</dd></div>
+                {(["signature", "expiry", "revocation", "recipientMatch", "payment", "eligibility"] as const).map((finding) => (
+                  <div key={finding}><dt className="text-xs text-slate-500">{finding}</dt><dd>{assessment.findings[finding].result}</dd></div>
+                ))}
+              </dl>
+            )}
           </section>
           <section className="rounded border border-slate-200 bg-white p-4">
             <h2 className="font-semibold">Case history</h2>
