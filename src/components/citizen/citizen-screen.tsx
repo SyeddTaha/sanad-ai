@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { CaseStatus } from "@/contracts/v1/case";
 import { citizenText, useCitizenLanguage } from "./citizen-language";
 import type { CitizenMessageKey } from "./citizen-copy";
 import { syntheticCitizenViewAdapter } from "./citizen-view-adapter";
+import { CitizenAudioControl } from "./citizen-audio-control";
+import { useCitizenSession } from "./citizen-session";
+import type { CitizenAudioTopic } from "./citizen-narration";
 
 export type CitizenScreenName = "home" | "verify" | "results" | "dispute" | "case" | "consent";
 
@@ -13,16 +16,19 @@ function PageIntro({
   eyebrow,
   title,
   description,
+  audioTopic,
 }: {
   eyebrow: string;
   title: string;
   description: string;
+  audioTopic: CitizenAudioTopic;
 }) {
   return (
     <div className="citizen-page-intro">
       <p className="citizen-eyebrow">{eyebrow}</p>
       <h1>{title}</h1>
       <p>{description}</p>
+      <CitizenAudioControl topic={audioTopic} />
     </div>
   );
 }
@@ -63,6 +69,7 @@ function HomeScreen() {
           <p className="citizen-eyebrow">{text("heroLabel")}</p>
           <h1 id="citizen-home-title">{text("homeTitle")}</h1>
           <p className="citizen-hero-description">{text("homeIntro")}</p>
+          <CitizenAudioControl topic="welcome" />
           <p className="citizen-hero-question">{text("heroQuestion")}</p>
           <div className="citizen-actions">
             <Link className="citizen-button citizen-button-primary" href="/citizen/verify">
@@ -114,9 +121,15 @@ function HomeScreen() {
 
 function VerifyScreen() {
   const { language } = useCitizenLanguage();
+  const { coordinator } = useCitizenSession();
   const text = (key: CitizenMessageKey) => citizenText(language, key);
   const [notice, setNotice] = useState("");
   const [state, setState] = useState<"idle" | "empty" | "disconnected">("idle");
+
+  useEffect(() => coordinator.registerPrivateStateClearer(() => {
+    setNotice("");
+    setState("idle");
+  }), [coordinator]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -125,7 +138,7 @@ function VerifyScreen() {
 
   return (
     <main className="citizen-main" id="main-content">
-      <PageIntro eyebrow={text("navVerify")} title={text("verifyHeading")} description={text("verifyCopy")} />
+      <PageIntro audioTopic="notice" eyebrow={text("navVerify")} title={text("verifyHeading")} description={text("verifyCopy")} />
       <div className="citizen-content-narrow">
         <form className="citizen-form" onSubmit={handleSubmit}>
           <label htmlFor="citizen-notice">{text("noticeField")}</label>
@@ -165,7 +178,7 @@ function ResultsScreen() {
 
   return (
     <main className="citizen-main" id="main-content">
-      <PageIntro eyebrow={text("passportTitle")} title={text("resultsHeading")} description={text("resultsCopy")} />
+      <PageIntro audioTopic="evidence" eyebrow={text("passportTitle")} title={text("resultsHeading")} description={text("resultsCopy")} />
       <section aria-label={text("resultsHeading")} className="citizen-evidence-passport">
         {syntheticCitizenViewAdapter.getEvidenceFindings().map(({ key, status }) => {
           const copyByFinding = {
@@ -212,9 +225,17 @@ function SubmissionStates() {
 
 function DisputeScreen() {
   const { language } = useCitizenLanguage();
+  const { coordinator } = useCitizenSession();
   const text = (key: CitizenMessageKey) => citizenText(language, key);
   const [submitted, setSubmitted] = useState(false);
+  const [reason, setReason] = useState("");
+  const [evidence, setEvidence] = useState("");
 
+  useEffect(() => coordinator.registerPrivateStateClearer(() => {
+    setReason("");
+    setEvidence("");
+    setSubmitted(false);
+  }), [coordinator]);
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
@@ -222,16 +243,31 @@ function DisputeScreen() {
 
   return (
     <main className="citizen-main" id="main-content">
-      <PageIntro eyebrow={text("navTrack")} title={text("disputeHeading")} description={text("disputeCopy")} />
+      <PageIntro audioTopic="dispute" eyebrow={text("navTrack")} title={text("disputeHeading")} description={text("disputeCopy")} />
       <div className="citizen-form-layout">
         <form className="citizen-form" onSubmit={handleSubmit}>
           <label htmlFor="citizen-reason">{text("reasonLabel")}</label>
-          <textarea aria-describedby="reason-help" id="citizen-reason" maxLength={2000} required rows={4} />
+          <textarea
+            aria-describedby="reason-help"
+            id="citizen-reason"
+            maxLength={2000}
+            onChange={(event) => setReason(event.target.value)}
+            required
+            rows={4}
+            value={reason}
+          />
           <p className="citizen-field-help" id="reason-help">{text("reasonHelp")}</p>
           <label htmlFor="citizen-evidence">
             {text("evidenceLabel")} <span className="citizen-optional">({text("optional")})</span>
           </label>
-          <textarea aria-describedby="evidence-help" id="citizen-evidence" maxLength={2000} rows={4} />
+          <textarea
+            aria-describedby="evidence-help"
+            id="citizen-evidence"
+            maxLength={2000}
+            onChange={(event) => setEvidence(event.target.value)}
+            rows={4}
+            value={evidence}
+          />
           <p className="citizen-field-help" id="evidence-help">{text("evidenceHelp")}</p>
           <p className="citizen-privacy-note">{text("privacyNotice")}</p>
           <button className="citizen-button citizen-button-primary" type="submit">{text("submitDispute")}</button>
@@ -268,7 +304,7 @@ function CaseScreen() {
 
   return (
     <main className="citizen-main" id="main-content">
-      <PageIntro eyebrow={text("navTrack")} title={text("caseHeading")} description={text("caseCopy")} />
+      <PageIntro audioTopic="evidence" eyebrow={text("navTrack")} title={text("caseHeading")} description={text("caseCopy")} />
       <section aria-labelledby="citizen-case-number" className="citizen-case-summary">
         <div>
           <p className="citizen-eyebrow">{text("caseLabel")}</p>
@@ -371,12 +407,15 @@ const consentGrantCopy = {
 
 function ConsentScreen() {
   const { language } = useCitizenLanguage();
+  const { coordinator } = useCitizenSession();
   const text = (key: CitizenMessageKey) => citizenText(language, key);
   const [withdrawn, setWithdrawn] = useState<Partial<Record<"helper" | "department", true>>>({});
 
+  useEffect(() => coordinator.registerPrivateStateClearer(() => setWithdrawn({})), [coordinator]);
+
   return (
     <main className="citizen-main" id="main-content">
-      <PageIntro eyebrow={text("navConsent")} title={text("consentHeading")} description={text("consentCopy")} />
+      <PageIntro audioTopic="consent" eyebrow={text("navConsent")} title={text("consentHeading")} description={text("consentCopy")} />
       <p className="citizen-privacy-note">{text("withdrawRule")}</p>
       <section aria-label={text("consentHeading")} className="citizen-consent-list">
         {syntheticCitizenViewAdapter.getConsentPreviews().map(({ recipient }) => {
@@ -399,6 +438,26 @@ function ConsentScreen() {
 }
 
 export function CitizenScreen({ screen }: { screen: CitizenScreenName }) {
+  const { ended, startNewSession } = useCitizenSession();
+  const { language } = useCitizenLanguage();
+  const text = (key: CitizenMessageKey) => citizenText(language, key);
+
+  if (ended) {
+    return (
+      <main className="citizen-main citizen-session-ended" id="main-content">
+        <h1>{text("sessionEndedTitle")}</h1>
+        <p>{text("sessionEndedBody")}</p>
+        <button
+          className="citizen-button citizen-button-primary citizen-session-restart"
+          onClick={startNewSession}
+          type="button"
+        >
+          {text("startNewSession")}
+        </button>
+      </main>
+    );
+  }
+
   const screens: Record<CitizenScreenName, () => ReactNode> = {
     home: HomeScreen,
     verify: VerifyScreen,
