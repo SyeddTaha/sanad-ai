@@ -19,18 +19,41 @@ the explicit unavailable rule basis. Frozen v1 exports remain unchanged. See
 | `npm run test:b03:live` on the final production build | 12 passed, 0 failed/skipped, real Supabase/Auth/PostgreSQL; citizen/helper submission, concurrent retries, stale writes, withdrawal, Passport history, rollback, officer expiry and direct database denial. |
 | B02 live suite on B03 production build | 8 passed, 0 failed/skipped, using real Supabase/Auth/PostgreSQL; both concurrent withdrawal orderings and rollback pass. |
 | `npm run db:migrate` | All four B03 migrations applied to development Supabase; repeat reports already current. |
-| Diff/public assets secret check | Passed against configured private values, changed content and 11 browser build assets; values never printed. |
+| Diff/public assets secret check | Passed against configured private values, changed content and 16 browser build assets after main integration; values never printed. |
 | Documentation/diff checks | Eight local links resolved; `git diff --check` passed; frozen contracts unchanged. |
 
-Both live suites ran against the final production build containing the
-authorization review fix. B03 completed in 463 seconds; B02 in 306 seconds.
-These suites use actual development services, not provider substitutes.
+Both live suites ran against the B03 production build containing the
+authorization review fix before the subsequent main integration. B03 completed
+in 463 seconds; B02 in 306 seconds. These suites use actual development services,
+not provider substitutes.
+
+## Integration with current main
+
+While verification ran, main advanced to `e42018d` with PRs #5/#6 (AI-trust
+spikes and Citizen UI foundation). Merge commit `7cbabf3` preserves that work.
+The only conflict was competing additions at the end of `package.json` scripts;
+both `test:b03:live` and `test:ai-trust` were retained. B03 backend, HTTP, schemas,
+tests and migrations are byte-for-byte unchanged by that merge.
+
+Post-merge checks reran: contracts 25 passed; backend 51 passed; typecheck, lint
+and production build passed. The upstream AI-trust suite reported 15 passed and
+one real-provider test skipped because its `.env.local` configuration is absent.
+No claim of a real AI invocation is made by this rerun. The final build contains
+both the Citizen UI and all B03 routes; it passed the public-asset secret scan.
+The post-merge production HTTP smoke check also passed with real development
+Auth/PostgreSQL: reservation, draft PATCH, Case submission, Assessment creation,
+Passport retrieval and identical original-outcome replay. Its session was logged
+out; only synthetic immutable history was retained.
 
 The backend suite initially found an outdated seed-test expectation of three
 migrations. It now checks the explicit seven-file inventory and repeat seeding
 still passes. A final build attempt encountered OneDrive's Windows `EPERM` while
 clearing generated `.next` content. Moving only the verified generated cache to
 ignored `build/b03-previous-cache` allowed a fresh successful production build.
+After main integration, backup generated TypeScript files were discovered by
+the broad compiler include. The caches were then moved outside the repository
+to a private temporary archive, and the combined build passed without changing
+compiler configuration or application source.
 The existing ignored parent-directory lockfile warning remains nonfatal.
 
 ## TDD and review evidence
