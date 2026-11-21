@@ -152,7 +152,8 @@ test("evidence addition is immutable, versioned, replayable and reauthorizes aft
 
 test("Passport reads preserve six independent findings and immutable historical Assessments with current sharing checks", async () => {
   const caseId = (await (await handleConsent(request(1, {}), "reserve", undefined, dependencies(1))).json()).data.caseId;
-  const initial = { ...assessmentFixture, id: crypto.randomUUID(), caseId, evidenceRefs: [] };
+  const initial = { ...assessmentFixture, id: crypto.randomUUID(), caseId, evidenceRefs: [],
+    contradictions: [{ fields: ["payment_amount"], sourceRefs: assessmentFixture.sourceVersions }], missingEvidence: ["synthetic_missing_record"] };
   const latest = { ...initial, id: crypto.randomUUID(), assessedAt: "2026-11-21T14:00:00Z", evidenceVersion: 2,
     findings: { ...initial.findings, payment: { ...initial.findings.payment, result: "UNKNOWN" as const, reasonCodes: ["SOURCE_UNAVAILABLE" as const] } } };
   for (const record of [initial, latest]) await db.query("insert into public.assessments(id,case_id,evidence_version,rule_version_id,assessed_at,record) values($1,$2,$3,$4,$5,$6)",
@@ -168,6 +169,10 @@ test("Passport reads preserve six independent findings and immutable historical 
   const old = EvidencePassportSchema.parse((await (await handleCase(historicalRequest, "passport", caseId, dependencies(1))).json()).data);
   assert.equal(old.payment.result, "PENDING");
   assert.equal(old.assessmentId, initial.id);
+  assert.deepEqual(old.contradictions, initial.contradictions);
+  assert.deepEqual(old.missingEvidence, ["synthetic_missing_record"]);
+  const trace = await handleCase(request(1), "trace", caseId, dependencies(1), initial.id);
+  assert.deepEqual(AssessmentSchema.parse((await trace.json()).data), initial);
   for (const actor of [2,3,5,6]) assert.equal((await handleCase(request(actor), "passport", caseId, dependencies(actor))).status, 403);
 });
 
@@ -271,4 +276,17 @@ test("draft retries preserve original content; empty, stale, malformed and forei
   const absent = await handleCase(request(1), "detail", crypto.randomUUID(), dependencies(1));
   const inaccessible = await handleCase(request(1), "detail", foreign, dependencies(1));
   assert.equal((await absent.json()).error.code, (await inaccessible.json()).error.code);
+});
+
+test("an expired assigned officer request commits the consent interruption while denying evidence", async () => {
+  const caseId = (await (await handleConsent(request(1, {}), "reserve", undefined, dependencies(1))).json()).data.caseId;
+  await db.query("insert into public.cases(id,citizen_id,status,assigned_officer_id,assigned_department_id) values($1,$2,'UNDER_REVIEW',$3,$4)", [caseId, id(1), id(4), id(30)]);
+  await db.query(`insert into public.consent_grants(case_id,grantor_citizen_id,recipient_type,recipient_id,purpose,actions,created_at,expires_at)
+    values($1,$2,'DEPARTMENT',$3,'synthetic_department_review',array['READ_CASE','READ_EVIDENCE','REVIEW_CASE']::public.sanad_consent_action[],now()-interval '2 hours',now()-interval '1 hour')`, [caseId,id(1),id(30)]);
+  const denied = await handleCase(request(4), "passport", caseId, dependencies(4));
+  assert.equal(denied.status, 403);
+  const history = (await (await handleCase(request(1), "history", caseId, dependencies(1))).json()).data;
+  const interrupted = history.items.filter((item: { action: string }) => item.action === "CONSENT_INTERRUPTED");
+  assert.equal(interrupted.length, 1);
+  assert.equal(interrupted[0].actorId, id(4));
 });

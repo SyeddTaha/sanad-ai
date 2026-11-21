@@ -53,8 +53,12 @@ transitions/resolution remain B04.
 
 ## Authorization, retries and errors
 
-All protected work uses B01/B02's `inAuthorizationTransaction`,
-`loadAuthorization`, `authorize`, `reconcileConsentStatus` and minimal audit.
+All protected work uses B01/B02's `withAuthorizedCase`, backed by
+`inAuthorizationTransaction`, `loadAuthorization`, `authorize`,
+`reconcileConsentStatus` and minimal audit. The shared wrapper supports bounded
+request preparation before locks, complete server-selected purpose paths and
+additional Assessment permissions. Denied assigned-officer requests still commit
+lazy consent interruptions without returning evidence.
 Complete server-selected helper/department/audit permission paths are evaluated
 independently; partial permissions from different roles never combine. Admins
 have no automatic private access. SQL uses the same transaction connection.

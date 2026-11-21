@@ -4,9 +4,9 @@ import { z } from "zod";
 import { CaseSchema, IdSchema, type ConsentAction } from "@/contracts/v1";
 import { AuthFailure } from "@/backend/auth/principal";
 import { privateJson } from "@/backend/auth/session";
-import { audit, inAuthorizationTransaction, type Dependencies, type Transaction } from "@/backend/authorization/transaction";
-import { loadAuthorization, reconcileConsentStatus } from "@/backend/authorization/service";
-import { authorize, type Permission } from "@/backend/authorization/policy";
+import { type Dependencies, type Transaction } from "@/backend/authorization/transaction";
+import { loadAuthorization, reconcileConsentStatus, withAuthorizedCase } from "@/backend/authorization/service";
+import { authorize, type Permission, type PolicyContext } from "@/backend/authorization/policy";
 import { errorJson, readBody } from "@/backend/consent/http";
 import { addEvidence, evidenceRecord } from "./evidence";
 import { AddEvidenceRequestSchema, SaveDraftRequestSchema, SubmitCaseRequestSchema, CreateAssessmentRequestSchema } from "@/lib/case-contract";
@@ -38,8 +38,7 @@ async function checkPermission(tx: Transaction, caseId: string, action: ConsentA
   return decision;
 }
 
-async function mayProcessAi(tx: Transaction, caseId: string) {
-  const context = await loadAuthorization(tx, caseId);
+function mayProcessAi(context: PolicyContext) {
   return ["synthetic_helper_assistance", "synthetic_department_review", "synthetic_audit_review"].some((purpose) =>
     authorize(context, { action: "PROCESS_AI", purpose, processorId: SANAD_AI_PROCESSOR_ID }).allowed);
 }
@@ -60,15 +59,12 @@ export async function handleCase(request: NextRequest, operation: CaseOperation,
   const requestId = crypto.randomUUID();
   let prepared: unknown;
   let key: string;
+  let requireAi = false;
   const { action, audit: event, status } = operations[operation];
   try {
-    const data = await inAuthorizationTransaction(request, requestId, event, async (tx) => {
-      if (!IdSchema.safeParse(caseId).success) throw new AuthFailure("VALIDATION_FAILED");
-      const decision = await checkPermission(tx, caseId, action);
-      if (operation === "assess") await checkPermission(tx, caseId, "READ_EVIDENCE");
-      await reconcileConsentStatus(tx, caseId);
+    const data = await withAuthorizedCase(request, { caseId: () => caseId, action, purpose: "synthetic_helper_assistance",
+      alternativePurposes: ["synthetic_department_review", "synthetic_audit_review"], additionalActions: operation === "assess" ? ["READ_EVIDENCE"] : [] }, async (tx, context) => {
       let result;
-      let requireAi = false;
       if (operation === "draft-read") {
         await requireUnsubmitted(tx, caseId);
         result = await draftRecord(tx, await draftSnapshot(tx, caseId));
@@ -84,7 +80,7 @@ export async function handleCase(request: NextRequest, operation: CaseOperation,
         result = await draftRecord(tx, snapshot);
       } else if (operation === "assess") {
         const input = CreateAssessmentRequestSchema.parse(prepared);
-        const aiAuthorized = input.includeAi && await mayProcessAi(tx, caseId);
+        const aiAuthorized = input.includeAi && mayProcessAi(context);
         const saved = await replayable(tx, caseId, operation, key, prepared, () => createAssessment(tx, caseId, input.expectedEvidenceVersion, aiAuthorized));
         result = await assessmentRecord(tx, caseId, saved.assessmentId);
         requireAi = input.includeAi && result.ai.status !== "NOT_AUTHORIZED";
@@ -107,12 +103,10 @@ export async function handleCase(request: NextRequest, operation: CaseOperation,
         if (assessmentId !== null && !IdSchema.safeParse(assessmentId).success) throw new AuthFailure("VALIDATION_FAILED");
         result = operation === "trace" ? await assessmentRecord(tx, caseId, assessmentId) : await passportRecord(tx, caseId, assessmentId);
       } else result = await caseRecord(tx, caseId);
-      await checkPermission(tx, caseId, action);
-      if (operation === "assess") await checkPermission(tx, caseId, "READ_EVIDENCE");
-      if (requireAi && !await mayProcessAi(tx, caseId)) throw new AuthFailure("CONSENT_REQUIRED");
-      await audit(tx, event, "ALLOWED", caseId, decision.authorizationRef);
       return result;
-    }, dependencies, async () => {
+    }, dependencies, { requestId, auditAction: event, recheck: (context) => {
+      if (requireAi && !mayProcessAi(context)) throw new AuthFailure("CONSENT_REQUIRED");
+    }, prepare: async () => {
       const schema = operation === "evidence-add" ? AddEvidenceRequestSchema : operation === "draft-save" ? SaveDraftRequestSchema : operation === "submit" ? SubmitCaseRequestSchema : operation === "assess" ? CreateAssessmentRequestSchema : null;
       if (!schema) return;
       const parsed = schema.safeParse(await readBody(request, 65536));
@@ -122,7 +116,7 @@ export async function handleCase(request: NextRequest, operation: CaseOperation,
       const parsedKey = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/).safeParse(request.headers.get("idempotency-key"));
       if (!parsedKey.success) throw new AuthFailure("MALFORMED_REQUEST");
       key = parsedKey.data;
-    });
+    } });
     return privateJson({ data, requestId }, status);
   } catch (error) { return errorJson(error, requestId); }
 }
