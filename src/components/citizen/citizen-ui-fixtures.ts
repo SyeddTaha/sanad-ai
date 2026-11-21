@@ -1,6 +1,8 @@
+import type { CaseStatus } from "@/contracts/v1/case";
+
 export const citizenUiFixture = {
   caseReference: "DEMO-CASE-04",
-  caseStatus: "UNDER_REVIEW",
+  caseStatus: "UNDER_REVIEW" satisfies CaseStatus,
   findings: [
     { key: "authenticity", status: "UNKNOWN" },
     { key: "payment", status: "UNKNOWN" },

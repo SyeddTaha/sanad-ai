@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent, type ReactNode } from "react";
+import type { CaseStatus } from "@/contracts/v1/case";
 import { citizenUiFixture } from "./citizen-ui-fixtures";
 import { citizenText, useCitizenLanguage } from "./citizen-language";
 import type { CitizenMessageKey } from "./citizen-copy";
@@ -131,7 +132,7 @@ function VerifyScreen() {
             autoComplete="off"
             id="citizen-notice"
             aria-describedby="notice-help"
-            maxLength={4000}
+            maxLength={16384}
             onChange={(event) => {
               setNotice(event.target.value);
               setState("idle");
@@ -224,12 +225,12 @@ function DisputeScreen() {
       <div className="citizen-form-layout">
         <form className="citizen-form" onSubmit={handleSubmit}>
           <label htmlFor="citizen-reason">{text("reasonLabel")}</label>
-          <textarea aria-describedby="reason-help" id="citizen-reason" maxLength={1000} required rows={4} />
+          <textarea aria-describedby="reason-help" id="citizen-reason" maxLength={2000} required rows={4} />
           <p className="citizen-field-help" id="reason-help">{text("reasonHelp")}</p>
           <label htmlFor="citizen-evidence">
             {text("evidenceLabel")} <span className="citizen-optional">({text("optional")})</span>
           </label>
-          <textarea aria-describedby="evidence-help" id="citizen-evidence" maxLength={1000} rows={4} />
+          <textarea aria-describedby="evidence-help" id="citizen-evidence" maxLength={2000} rows={4} />
           <p className="citizen-field-help" id="evidence-help">{text("evidenceHelp")}</p>
           <p className="citizen-privacy-note">{text("privacyNotice")}</p>
           <button className="citizen-button citizen-button-primary" type="submit">{text("submitDispute")}</button>
@@ -243,7 +244,7 @@ function DisputeScreen() {
   );
 }
 
-const caseSteps: { key: CitizenMessageKey; status: string }[] = [
+const caseSteps: { key: CitizenMessageKey; status: CaseStatus }[] = [
   { key: "statusSubmitted", status: "SUBMITTED" },
   { key: "statusReview", status: "UNDER_REVIEW" },
   { key: "statusResolved", status: "RESOLVED" },
@@ -340,37 +341,48 @@ function ConsentGrant({
   );
 }
 
+const consentGrantCopy = {
+  helper: {
+    purpose: "helperPurpose",
+    recipient: "helperRecipient",
+    scope: "helperScope",
+  },
+  department: {
+    purpose: "departmentPurpose",
+    recipient: "departmentRecipient",
+    scope: "departmentScope",
+  },
+} satisfies Record<"helper" | "department", {
+  purpose: CitizenMessageKey;
+  recipient: CitizenMessageKey;
+  scope: CitizenMessageKey;
+}>;
+
 function ConsentScreen() {
   const { language } = useCitizenLanguage();
   const text = (key: CitizenMessageKey) => citizenText(language, key);
-  const [withdrawn, setWithdrawn] = useState(false);
+  const [withdrawn, setWithdrawn] = useState<Partial<Record<"helper" | "department", true>>>({});
 
   return (
     <main className="citizen-main" id="main-content">
       <PageIntro eyebrow={text("navConsent")} title={text("consentHeading")} description={text("consentCopy")} />
       <p className="citizen-privacy-note">{text("withdrawRule")}</p>
       <section aria-label={text("consentHeading")} className="citizen-consent-list">
-        {citizenUiFixture.consentGrants.map(({ recipient }) => (
-          recipient === "helper" ? (
+        {citizenUiFixture.consentGrants.map(({ recipient }) => {
+          const grantCopy = consentGrantCopy[recipient];
+          return (
             <ConsentGrant
               key={recipient}
-              onWithdraw={() => setWithdrawn(true)}
-              purpose="helperPurpose"
-              recipient="helperRecipient"
-              scope="helperScope"
-              withdrawn={withdrawn}
+              onWithdraw={() => setWithdrawn((current) => ({ ...current, [recipient]: true }))}
+              withdrawn={Boolean(withdrawn[recipient])}
+              {...grantCopy}
             />
-          ) : (
-            <ConsentGrant
-              key={recipient}
-              purpose="departmentPurpose"
-              recipient="departmentRecipient"
-              scope="departmentScope"
-            />
-          )
-        ))}
+          );
+        })}
       </section>
-      {withdrawn ? <p aria-live="polite" className="citizen-error-message" role="status">{text("noAccessChanges")}</p> : null}
+      {Object.values(withdrawn).some(Boolean) ? (
+        <p aria-live="polite" className="citizen-error-message" role="status">{text("noAccessChanges")}</p>
+      ) : null}
     </main>
   );
 }
