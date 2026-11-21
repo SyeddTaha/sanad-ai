@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { logout, session } from "@/lib/auth/browser";
 import type { SessionContext } from "@/lib/auth/session-contract";
+import { getStaffApiMode, getStaffModeLabel } from "@/lib/staff-api";
 
 export default function StaffShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -24,8 +25,13 @@ export default function StaffShell({ children }: { children: ReactNode }) {
       } else if (pathname.startsWith("/staff/officer") && !role.includes("OFFICER")) {
         setError("FORBIDDEN: This route requires the OFFICER role.");
       }
-    }).catch(() => {
+    }).catch((cause: unknown) => {
       if (!active) return;
+      if (cause instanceof Error && cause.message === "FORBIDDEN") {
+        setError("FORBIDDEN: The authenticated session has no permitted staff role.");
+        setChecking(false);
+        return;
+      }
       router.replace("/login");
     }).finally(() => {
       if (active) setChecking(false);
@@ -47,6 +53,7 @@ export default function StaffShell({ children }: { children: ReactNode }) {
 
   const canOfficer = context.principal.roles.includes("OFFICER");
   const canAdmin = context.principal.roles.includes("ADMIN");
+  const apiMode = getStaffApiMode();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 lg:grid lg:grid-cols-[220px_1fr]">
@@ -62,9 +69,15 @@ export default function StaffShell({ children }: { children: ReactNode }) {
         </nav>
       </aside>
       <main className="min-w-0 p-4 md:p-6">
-        <div className="mb-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          Fixture demo only until B04 endpoints are live. Synthetic policy and data do not represent government rules or payment authorization.
-        </div>
+        {apiMode === "fixture" ? (
+          <div className="mb-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            Fixture demo mode: all queue data and mutations are synthetic demonstrations.
+          </div>
+        ) : (
+          <div className="mb-4 rounded border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+            {getStaffModeLabel("live")}. No live result is assumed until a server confirmation is received.
+          </div>
+        )}
         {error && <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900" role="alert">{error}</div>}
         {!error && children}
       </main>

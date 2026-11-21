@@ -1,6 +1,9 @@
 import type { Case } from "@/contracts/v1/case";
 import type { OfficerQueueItem, DispatchItem, CaseDecision } from "@/lib/staff-api";
-import type { EvidenceItem } from "@/lib/case-contract";
+import { z } from "zod";
+import { EvidenceItemSchema } from "@/lib/case-contract";
+
+type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
 
 export const fixtureDepartmentId = "10000000-0000-4000-8000-000000000001";
 export const fixtureOfficerIds = [

@@ -11,6 +11,7 @@ import {
   RuleVersionSchema,
   TimestampSchema,
   VersionSchema,
+  AssessmentSchema,
 } from "@/contracts/v1";
 import { CaseEventSchema, EvidenceItemSchema } from "@/lib/case-contract";
 
@@ -70,6 +71,7 @@ const PublishedRuleSchema = z.strictObject({
   rule: RuleVersionSchema,
 });
 const RuleResponseSchema = SuccessSchema(PublishedRuleSchema);
+const AssessmentResponseSchema = SuccessSchema(AssessmentSchema);
 
 export type OfficerQueueItem = z.infer<typeof OfficerQueueItemSchema>;
 export type DispatchItem = z.infer<typeof DispatchItemSchema>;
@@ -86,6 +88,7 @@ const parsers = {
   history: HistoryResponseSchema,
   decisions: DecisionsResponseSchema,
   rule: RuleResponseSchema,
+  assessment: AssessmentResponseSchema,
 };
 
 export function parseStaffResponse(value: unknown, parser: keyof typeof parsers) {
@@ -108,23 +111,63 @@ function randomKey() {
   return Array.from(bytes, (value) => value.toString(36)).join("_").slice(0, 128);
 }
 
-export function createIdempotencyKey(keys: Map<string, string>, action: string) {
+export type IdempotencyEntry = {
+  key: string;
+  fingerprint: string;
+  status: "pending" | "succeeded";
+};
+
+export const staffMutationKeys = new Map<string, IdempotencyEntry>();
+
+function fingerprint(payload: unknown) {
+  if (payload === undefined) return "{}";
+  return JSON.stringify(payload);
+}
+
+export function createIdempotencyKey(
+  keys: Map<string, IdempotencyEntry>,
+  action: string,
+  payload?: unknown,
+) {
+  const nextFingerprint = fingerprint(payload);
   const existing = keys.get(action);
-  if (existing) return existing;
+  if (existing?.fingerprint === nextFingerprint) return existing.key;
   const key = randomKey();
-  keys.set(action, key);
+  keys.set(action, { key, fingerprint: nextFingerprint, status: "pending" });
   return key;
+}
+
+export function markMutationSucceeded(
+  keys: Map<string, IdempotencyEntry>,
+  action: string,
+  payload?: unknown,
+) {
+  const entry = keys.get(action);
+  if (entry?.fingerprint === fingerprint(payload)) entry.status = "succeeded";
 }
 
 export function getStaffApiMode(): StaffApiMode {
   return process.env.NEXT_PUBLIC_SANAD_STAFF_MODE === "live" ? "live" : "fixture";
 }
 
-async function request(path: string, init: RequestInit, action?: string, keys?: Map<string, string>) {
+export function getStaffModeLabel(mode: StaffApiMode) {
+  return mode === "live"
+    ? "Live configuration: server reachability and permissions are verified per request"
+    : "Fixture demo: synthetic data and mutations";
+}
+
+export function isLiveResolutionAvailable(mode: StaffApiMode, assessmentId: string | null) {
+  return mode === "fixture" ? true : assessmentId !== null && assessmentId.trim().length > 0;
+}
+
+async function request(path: string, init: RequestInit, action?: string, keys?: Map<string, IdempotencyEntry>) {
   const headers = new Headers(init.headers);
   if (init.method && init.method !== "GET") {
     headers.set("Content-Type", "application/json");
-    if (action && keys) headers.set("Idempotency-Key", createIdempotencyKey(keys, action));
+    if (action && keys) {
+      const payload = init.body ? JSON.parse(String(init.body)) : undefined;
+      headers.set("Idempotency-Key", createIdempotencyKey(keys, action, payload));
+    }
   }
   const response = await fetch(`/api/v1/${path}`, {
     ...init,
@@ -148,7 +191,7 @@ async function request(path: string, init: RequestInit, action?: string, keys?: 
   return payload;
 }
 
-export function createStaffApi(keys = new Map<string, string>(), mode = getStaffApiMode()) {
+export function createStaffApi(keys = staffMutationKeys, mode = getStaffApiMode()) {
   return {
     mode,
     getOfficerQueue: async (cursor?: string, status?: string) => {
@@ -190,7 +233,17 @@ export function createStaffApi(keys = new Map<string, string>(), mode = getStaff
         method: "POST",
         body: JSON.stringify(body),
       }, `${action}:${caseId}`, keys);
+      markMutationSucceeded(keys, `${action}:${caseId}`, body);
       return action === "resolve" ? parsers.resolution.parse(payload).data : parsers.caseAction.parse(payload).data;
+    },
+    createAssessment: async (caseId: string, body: { expectedEvidenceVersion: number; includeAi: boolean }) => {
+      if (mode === "fixture") return null;
+      const payload = await request(`cases/${caseId}/assessments`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }, `assessment:${caseId}`, keys);
+      markMutationSucceeded(keys, `assessment:${caseId}`, body);
+      return parsers.assessment.parse(payload).data;
     },
     publishRule: async (body: { programRef: "program_demo"; expectedCurrentVersion: number | null; parameters: z.infer<typeof RuleParametersSchema> }) => {
       if (mode === "fixture") throw new StaffApiError("SERVICE_UNAVAILABLE", "staff.fixture.mutations_disabled", false);
@@ -198,6 +251,7 @@ export function createStaffApi(keys = new Map<string, string>(), mode = getStaff
         method: "POST",
         body: JSON.stringify(body),
       }, "publish-rule", keys);
+      markMutationSucceeded(keys, "publish-rule", body);
       return parsers.rule.parse(payload).data;
     },
   };

@@ -4,9 +4,12 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Case } from "@/contracts/v1/case";
 import type { CaseDecision } from "@/lib/staff-api";
-import type { EvidenceItem } from "@/lib/case-contract";
-import { createIdempotencyKey, createStaffApi, StaffApiError } from "@/lib/staff-api";
+import { z } from "zod";
+import { EvidenceItemSchema } from "@/lib/case-contract";
+import { createStaffApi, getStaffApiMode, isLiveResolutionAvailable, StaffApiError } from "@/lib/staff-api";
 import { fixtureCaseDetails, fixtureDecisions, fixtureEvidence } from "@/lib/staff-fixtures";
+
+type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
 
 export default function OfficerCasePage() {
   const params = useParams<{ caseId: string }>();
@@ -21,7 +24,6 @@ export default function OfficerCasePage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [keys] = useState(() => new Map<string, string>());
 
   useEffect(() => {
     let active = true;
@@ -33,10 +35,17 @@ export default function OfficerCasePage() {
       api.getHistory(caseId),
     ]).then(([detail, evidenceResult, decisionResult, historyResult]) => {
       if (!active) return;
-      setCaseItem(detail ?? fixtureCaseDetails[caseId] ?? null);
-      setEvidence(evidenceResult?.items ?? fixtureEvidence[caseId] ?? []);
-      setDecisions(decisionResult?.items ?? fixtureDecisions[caseId] ?? []);
-      setHistory(historyResult?.items ?? []);
+      if (api.mode === "fixture") {
+        setCaseItem(detail ?? fixtureCaseDetails[caseId] ?? null);
+        setEvidence(evidenceResult?.items ?? fixtureEvidence[caseId] ?? []);
+        setDecisions(decisionResult?.items ?? fixtureDecisions[caseId] ?? []);
+        setHistory(historyResult?.items ?? []);
+      } else {
+        setCaseItem(detail);
+        setEvidence(evidenceResult?.items ?? []);
+        setDecisions(decisionResult?.items ?? []);
+        setHistory(historyResult?.items ?? []);
+      }
     }).catch((cause) => active && setError(cause instanceof Error ? cause.message : "Case unavailable"))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
@@ -56,8 +65,7 @@ export default function OfficerCasePage() {
     setError("");
     setMessage("");
     try {
-      const api = createStaffApi(keys);
-      createIdempotencyKey(keys, `${action}:${caseId}`);
+      const api = createStaffApi();
       if (api.mode === "fixture") {
         const status = action === "start-review" ? "UNDER_REVIEW"
           : action === "request-evidence" ? "NEEDS_EVIDENCE"
@@ -79,10 +87,40 @@ export default function OfficerCasePage() {
     }
   }
 
+  async function createReviewedAssessment() {
+    if (!caseItem) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const api = createStaffApi();
+      if (api.mode === "fixture") {
+        setAssessmentId("70000000-0000-4000-8000-000000000001");
+        setMessage("Fixture demo: assessment ID selected for demonstration only.");
+      } else {
+        const assessment = await api.createAssessment(caseId, {
+          expectedEvidenceVersion: caseItem.evidenceVersion,
+          includeAi: false,
+        });
+        if (!assessment) throw new Error("ASSESSMENT_UNAVAILABLE: no authorized Assessment route result");
+        setAssessmentId(assessment.id);
+        setMessage(`Authorized Assessment ${assessment.id.slice(0, 8)} created for evidence version ${assessment.evidenceVersion}.`);
+      }
+    } catch (cause) {
+      setError(cause instanceof StaffApiError ? `${cause.code}: ${cause.messageKey}` : cause instanceof Error ? cause.message : "Assessment creation failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function resolveCase() {
     if (!caseItem) return;
-    if (reason.trim().length === 0 || assessmentId.trim().length === 0) {
-      setError("Resolution requires a written reason and the exact reviewed assessment ID.");
+    if (reason.trim().length === 0) {
+      setError("Resolution requires a written reason.");
+      return;
+    }
+    if (!isLiveResolutionAvailable(getStaffApiMode(), assessmentId || null)) {
+      setError("Live resolution is unavailable until an authorized Assessment is created for the current evidence.");
       return;
     }
     if (!window.confirm("Resolve this case? This does not approve payment or eligibility.")) return;
@@ -90,8 +128,7 @@ export default function OfficerCasePage() {
     setError("");
     setMessage("");
     try {
-      const api = createStaffApi(keys);
-      createIdempotencyKey(keys, `resolve:${caseId}`);
+      const api = createStaffApi();
       if (api.mode === "fixture") {
         setCaseItem({ ...caseItem, status: "RESOLVED", version: caseItem.version + 1 });
         setMessage("Fixture-only resolution applied. No live disposition or payment approval occurred.");
@@ -140,7 +177,27 @@ export default function OfficerCasePage() {
           <h2 className="font-semibold">Workflow actions</h2>
           <div className="mt-3 space-y-3">
             {caseItem.status === "SUBMITTED" && <button disabled={busy} className="w-full rounded bg-slate-900 px-3 py-2 text-sm text-white" onClick={() => transition("start-review")}>Start review</button>}
-            {caseItem.status === "UNDER_REVIEW" && <><label className="block text-sm">Reason<textarea className="mt-1 min-h-20 w-full rounded border p-2" maxLength={2000} value={reason} onChange={(event) => setReason(event.target.value)} /></label><button disabled={busy} className="w-full rounded border px-3 py-2 text-sm" onClick={() => transition("request-evidence")}>Request evidence</button><button disabled={busy} className="mt-2 w-full rounded border px-3 py-2 text-sm" onClick={() => transition("escalate")}>Escalate</button><label className="mt-3 block text-sm">Reviewed assessment ID<input className="mt-1 w-full rounded border p-2" value={assessmentId} onChange={(event) => setAssessmentId(event.target.value)} /></label><button disabled={busy} className="mt-2 w-full rounded bg-slate-900 px-3 py-2 text-sm text-white" onClick={resolveCase}>Resolve with reason</button></>}
+            {caseItem.status === "UNDER_REVIEW" && (
+              <>
+                <label className="block text-sm">Reason<textarea className="mt-1 min-h-20 w-full rounded border p-2" maxLength={2000} value={reason} onChange={(event) => setReason(event.target.value)} /></label>
+                <button disabled={busy} className="w-full rounded border px-3 py-2 text-sm" onClick={() => transition("request-evidence")}>Request evidence</button>
+                <button disabled={busy} className="mt-2 w-full rounded border px-3 py-2 text-sm" onClick={() => transition("escalate")}>Escalate</button>
+                {getStaffApiMode() === "fixture" ? (
+                  <button disabled={busy} className="mt-3 w-full rounded border px-3 py-2 text-sm" onClick={createReviewedAssessment}>Use fixture assessment</button>
+                ) : (
+                  <button disabled={busy} className="mt-3 w-full rounded border px-3 py-2 text-sm" onClick={createReviewedAssessment}>Create reviewed Assessment</button>
+                )}
+                {assessmentId && <p className="mt-2 text-xs text-slate-600">Reviewed Assessment: {assessmentId}</p>}
+                {getStaffApiMode() === "fixture" ? (
+                  <button disabled={busy || !assessmentId} className="mt-2 w-full rounded bg-slate-900 px-3 py-2 text-sm text-white" onClick={resolveCase}>Resolve fixture case</button>
+                ) : (
+                  <div>
+                    <button disabled={busy || !assessmentId} className="mt-2 w-full rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={resolveCase}>Resolve with Assessment</button>
+                    {!assessmentId && <p className="mt-2 text-xs text-slate-600">Live resolution is disabled until an authorized Assessment is created for the current evidence version.</p>}
+                  </div>
+                )}
+              </>
+            )}
             {caseItem.status === "RESOLVED" && <button disabled={busy} className="w-full rounded bg-slate-900 px-3 py-2 text-sm text-white" onClick={() => transition("close")}>Close resolved case</button>}
           </div>
         </aside>
