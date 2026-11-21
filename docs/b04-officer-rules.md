@@ -89,6 +89,10 @@ timestamps, findings, source versions, resolution IDs and status come from the
 server. Admin and Auditor roles confer no automatic private evidence permission.
 An Auditor needs B02's independent named audit grant to read private inputs or
 decision explanations. That grant grants no officer mutations.
+Assignment rechecks review sharing for the new department in the same transaction.
+A dispatch-only grant permits the transfer but returns `PENDING_CONSENT`; granting
+review sharing restores `SUBMITTED` and requires fresh review. Use the returned
+Case version, which can advance for both assignment and consent interruption.
 
 ## Resolution and concurrency
 

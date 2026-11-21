@@ -240,6 +240,30 @@ test("B04 live officer workflow, published rules and transactional resolution",a
       assert.equal((await detail(caseId)).status,"CLOSED");
       console.log("B04 observed example:",JSON.stringify({caseId,assessmentId:result.assessmentId,resolutionId:result.resolutionId,status:"CLOSED"}));
     });
+    await scenario("dispatch-only reassignment interrupts review and restored sharing enables resolution",async()=>{
+      const {caseId,record}=await workflow();
+      const targetDepartment=crypto.randomUUID();
+      await db.query("insert into public.departments(id,name) values($1,'Synthetic dispatch-only department')",[targetDepartment]);
+      for(const actor of ["ADMIN","OFFICER"]) await db.query("insert into public.department_memberships(profile_id,department_id) values($1,$2)",[ids.get(actor),targetDepartment]);
+      try {
+        await data(`/cases/${caseId}/consents`,"CITIZEN_A",{recipientType:"DEPARTMENT",recipientId:targetDepartment,purpose:"synthetic_department_review",actions:["ASSIGN_CASE"],expiresAt:new Date(Date.now()+3600000).toISOString()},201);
+        const assignment=await data(`/cases/${caseId}/assign`,"ADMIN",{expectedVersion:record.version,departmentId:targetDepartment,officerId:ids.get("OFFICER"),reason:"Synthetic transfer needs new department review sharing"});
+        assert.equal(assignment.status,"PENDING_CONSENT");
+        assert.equal(assignment.version,record.version+2);
+        assert.equal((await call(`/cases/${caseId}/evidence`,"OFFICER")).status,403);
+        await data(`/cases/${caseId}/consents`,"CITIZEN_A",{recipientType:"DEPARTMENT",recipientId:targetDepartment,purpose:"synthetic_department_review",
+          actions:["READ_CASE","READ_EVIDENCE","REVIEW_CASE","REQUEST_ASSESSMENT","RESOLVE_CASE","CLOSE_CASE","ASSIGN_CASE"],expiresAt:new Date(Date.now()+3600000).toISOString()},201);
+        const restored=await detail(caseId);
+        assert.equal(restored.status,"SUBMITTED");
+        const reviewed=await data(`/cases/${caseId}/start-review`,"OFFICER",{expectedVersion:restored.version});
+        const assessment=await assess(caseId);
+        const result=await data(`/cases/${caseId}/resolve`,"OFFICER",{expectedVersion:reviewed.case.version,reviewedAssessmentId:assessment.id,reason:"Synthetic review completed after restoring department sharing; no payment authorized."});
+        assert.equal((await data(`/cases/${caseId}/close`,"OFFICER",{expectedVersion:result.case.version})).case.status,"CLOSED");
+        console.log("B04 final assignment example:",JSON.stringify({caseId,assessmentId:result.assessmentId,resolutionId:result.resolutionId,status:"CLOSED"}));
+      } finally {
+        for(const actor of ["ADMIN","OFFICER"]) await db.query("delete from public.department_memberships where profile_id=$1 and department_id=$2",[ids.get(actor),targetDepartment]);
+      }
+    });
   } finally {
     await db.query("rollback");
     await removeBarrier();

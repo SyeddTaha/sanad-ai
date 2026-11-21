@@ -276,3 +276,17 @@ test("an inaccessible queue cursor cannot reveal ordering metadata from another 
   assert.equal(result.status,200);
   assert.deepEqual((await result.json()).data,{items:[],nextCursor:null});
 });
+
+test("reassignment to a department with dispatch-only sharing immediately interrupts review",async()=>{
+  const {record}=await reviewedCase();
+  await db.query("insert into public.departments(id,name) values($1,'Synthetic dispatch-only department')",[id(32)]);
+  for (const actor of [4,5]) await db.query("insert into public.department_memberships(profile_id,department_id) values($1,$2)",[id(actor),id(32)]);
+  await handleConsent(request(1,{recipientType:"DEPARTMENT",recipientId:id(32),purpose:"synthetic_department_review",actions:["ASSIGN_CASE"],expiresAt:new Date(Date.now()+3600000).toISOString()}),"grant",record.id,dependencies(1));
+  const response=await handleOfficerAction(request(5,{expectedVersion:record.version,departmentId:id(32),officerId:id(4),reason:"Synthetic transfer needs department review consent"}),"assign",record.id,dependencies(5));
+  assert.equal(response.status,200);
+  const assigned=(await response.json()).data;
+  assert.equal(assigned.status,"PENDING_CONSENT");
+  assert.equal(assigned.version,record.version+2);
+  const decisions=(await (await handleCaseRecords(request(1),"decisions",record.id,dependencies(1))).json()).data.items;
+  assert.equal(decisions.find((decision:{action:string;departmentId:string})=>decision.action==="CASE_ASSIGNED" && decision.departmentId===id(32)).status,"PENDING_CONSENT");
+});

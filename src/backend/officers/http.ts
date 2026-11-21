@@ -50,6 +50,7 @@ export async function handleOfficerAction(request: NextRequest, operation: Offic
           join public.department_memberships m on m.profile_id=p.id where p.id=$1 and p.active and r.role='OFFICER' and m.department_id=$2`, [assignment.officerId,assignment.departmentId]);
         if (!rows.length) throw new AuthFailure("FORBIDDEN");
         await tx.db.query("update public.cases set assigned_officer_id=$2,assigned_department_id=$3 where id=$1", [caseId, assignment.officerId, assignment.departmentId]);
+        await reconcileConsentStatus(tx,caseId);
         }
         await recordDecision(tx, previous, event, "reason" in input ? String(input.reason) : null);
         const { rows: [record] } = await tx.db.query("select * from public.cases where id=$1", [caseId]);
