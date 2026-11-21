@@ -11,6 +11,9 @@ const origin=new URL(base).origin;
 const approved:RuleParameters={maxMonthlyIncomeMinor:800000,minRoutingConfidence:0.8,integrityFailurePriority:"HIGH"};
 
 test("B04 live officer workflow, published rules and transactional resolution",async(t)=>{
+  // Node's name filter includes descendants of matching parents. Keep diagnosis explicit.
+  const selected=process.env.B04_LIVE_SCENARIO;
+  const scenario=(name:string,work:()=>Promise<void>)=>t.test(name,{skip:!!selected && !name.includes(selected) && !name.startsWith("real Auth")},work);
   const db=await connectDatabase();
   const observer=await connectDatabase();
   const cookies=new Map<string,string>();
@@ -46,7 +49,9 @@ test("B04 live officer workflow, published rules and transactional resolution",a
     return {caseId,grant,record:CaseSchema.parse(review.case),assessment,body:{expectedVersion:review.case.version,reviewedAssessmentId:assessment.id,reason:"Reviewed synthetic dispute; unknown payment remains unknown. Case disposition authorizes no payment."}};
   }
   async function waitForBlocker(pid:number) {
-    const deadline=Date.now()+12000;
+    // Includes verified Auth, connection setup and deterministic reassessment before the SQL barrier.
+    // Production transaction lock_timeout remains 15s; observing a blocker is still mandatory.
+    const deadline=Date.now()+30000;
     while(Date.now()<deadline) {
       const {rows}=await observer.query("select pid from pg_stat_activity where $1::int=any(pg_blocking_pids(pid))",[pid]);
       if (rows.length) return Number(rows[0].pid);
@@ -59,7 +64,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
     await db.query("drop function if exists public.b04_live_barrier()");
   }
   try {
-    await t.test("real Auth, applied migrations, restricted publication and approved synthetic policy",async()=>{
+    await scenario("real Auth, applied migrations, restricted publication and approved synthetic policy",async()=>{
       for (const actor of ["CITIZEN_A","CITIZEN_B","HELPER","OFFICER","ADMIN","AUDITOR"]) {
         const response=await fetch(base+"/api/v1/auth/login",{method:"POST",headers:{origin,"content-type":"application/json"},
           body:JSON.stringify({email:actor.toLowerCase().replaceAll("_","-")+"@demo.sanad.test",password:process.env["DEMO_"+actor+"_PASSWORD"]})});
@@ -78,7 +83,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
       await assert.rejects(db.query("update public.rule_versions set parameters='{}' where id=$1",[rule.id]),{code:"23514"});
       await assert.rejects(db.query("delete from public.rule_versions where id=$1",[rule.id]),{code:"23514"});
     });
-    await t.test("dispatch metadata, officer queue and direct private evidence denials",async()=>{
+    await scenario("dispatch metadata, officer queue and direct private evidence denials",async()=>{
       const {caseId}=await workflow();
       const dispatch=StaffQueueResponseSchema.parse(await (await call("/admin/dispatch?limit=100","ADMIN")).json()).data;
       assert.ok(dispatch.items.some(item=>item.caseId===caseId));
@@ -96,7 +101,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
       assert.ok(audit.items.some((event:{action:string})=>event.action==="CASE_ASSIGNED"));
       assert.equal(JSON.stringify(audit).includes("Synthetic B04 private"),false);
     });
-    await t.test("evidence requests, Citizen resubmission and escalation follow ADR 0004",async()=>{
+    await scenario("evidence requests, Citizen resubmission and escalation follow ADR 0004",async()=>{
       const {caseId,record}=await workflow();
       assert.equal((await call(`/cases/${caseId}/close`,"OFFICER",{expectedVersion:record.version})).status,409);
       const requested=await data(`/cases/${caseId}/request-evidence`,"OFFICER",{expectedVersion:record.version,reason:"Add a synthetic account of the dispute"});
@@ -107,7 +112,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
       assert.equal(escalated.case.status,"SUBMITTED");
       assert.equal(escalated.case.priority,"HIGH");
     });
-    await t.test("published income changes affect fresh findings while historical rules and Assessments remain intact",async()=>{
+    await scenario("published income changes affect fresh findings while historical rules and Assessments remain intact",async()=>{
       const {caseId}=await workflow();
       await db.query(`insert into public.synthetic_program_inputs(case_id,version,recipient_match,enrollment,monthly_income_minor,recorded_by)
         values($1,1,'MATCH','ACTIVE',750000,$2)`,[caseId,ids.get("ADMIN")]);
@@ -123,7 +128,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
       assert.equal((await data(`/cases/${caseId}/program-inputs`,"OFFICER")).items[0].source,"SYNTHETIC_DEMO");
       await publish();
     });
-    await t.test("stale evidence and newly published rules prevent resolution",async()=>{
+    await scenario("stale evidence and newly published rules prevent resolution",async()=>{
       const {caseId,record,body}=await workflow();
       const added=await data(`/cases/${caseId}/evidence`,"CITIZEN_A",{expectedVersion:record.version,kind:"CITIZEN_STATEMENT",content:{text:"Changed evidence"},supersedesId:null},201);
       assert.equal((await call(`/cases/${caseId}/resolve`,"OFFICER",body)).status,409);
@@ -134,21 +139,21 @@ test("B04 live officer workflow, published rules and transactional resolution",a
       const staleRule=await call(`/cases/${caseId}/resolve`,"OFFICER",{...body,expectedVersion:added.caseVersion,reviewedAssessmentId:assessment.id});
       assert.equal((await staleRule.json()).error.code,"STALE_ASSESSMENT");
     });
-    await t.test("revoked department consent blocks resolution and preserves pending-consent history",async()=>{
+    await scenario("revoked department consent blocks resolution and preserves pending-consent history",async()=>{
       const {caseId,grant,body}=await workflow();
       await data(`/consents/${grant.id}/revoke`,"CITIZEN_A",{expectedVersion:grant.version});
       assert.equal((await call(`/cases/${caseId}/resolve`,"OFFICER",body)).status,403);
       assert.equal((await detail(caseId)).status,"PENDING_CONSENT");
       assert.equal((await call(`/cases/${caseId}/evidence`,"OFFICER")).status,403);
     });
-    await t.test("concurrent resolutions with distinct keys cannot both commit",async()=>{
+    await scenario("concurrent resolutions with distinct keys cannot both commit",async()=>{
       const {caseId,body}=await workflow();
       const responses=await Promise.all([call(`/cases/${caseId}/resolve`,"OFFICER",body),call(`/cases/${caseId}/resolve`,"OFFICER",body)]);
       assert.deepEqual(responses.map(response=>response.status).sort(),[200,409]);
       const decisions=CaseDecisionsResponseSchema.parse(await (await call(`/cases/${caseId}/decisions`,"OFFICER")).json()).data;
       assert.equal(decisions.items.filter(decision=>decision.action==="CASE_RESOLVED").length,1);
     });
-    await t.test("a concurrent source append commits first and prevents the blocked stale decision",async()=>{
+    await scenario("a concurrent source append commits first and prevents the blocked stale decision",async()=>{
       const {caseId,body}=await workflow();
       await db.query("begin");
       const {rows:[connection]}=await db.query("select pg_backend_pid() as pid");
@@ -164,7 +169,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
       assert.equal(response.status,409);
       assert.equal((await detail(caseId)).status,"UNDER_REVIEW");
     });
-    await t.test("publication-first lock ordering rejects the reviewed old rule through actual HTTP",async()=>{
+    await scenario("publication-first lock ordering rejects the reviewed old rule through actual HTTP",async()=>{
       const {caseId,body}=await workflow();
       const current=(await data("/rules/current","ADMIN")).rule;
       await db.query(`create function public.b04_live_barrier() returns trigger language plpgsql as $$ begin
@@ -184,7 +189,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
         assert.equal((await resolution).status,409);
       } finally {await db.query("rollback");await publication;await resolution;await removeBarrier();}
     });
-    await t.test("resolution-first lock ordering retains its historical rule while publication waits",async()=>{
+    await scenario("resolution-first lock ordering retains its historical rule while publication waits",async()=>{
       const {caseId,body,assessment}=await workflow();
       const current=(await data("/rules/current","ADMIN")).rule;
       await db.query(`create function public.b04_live_barrier() returns trigger language plpgsql as $$ begin
@@ -206,7 +211,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
         assert.equal(final.ruleVersionId,assessment.ruleVersionId);
       } finally {await db.query("rollback");await resolution;await publication;await removeBarrier();}
     });
-    await t.test("failed audit atomically rolls back the final assessment, decision, state and retry outcome",async()=>{
+    await scenario("failed audit atomically rolls back the final assessment, decision, state and retry outcome",async()=>{
       const {caseId,body,assessment}=await workflow();
       const history=await data(`/cases/${caseId}/history`,"OFFICER");
       await db.query(`create function public.b04_live_barrier() returns trigger language plpgsql as $$ begin
@@ -220,7 +225,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
       assert.equal((await data(`/cases/${caseId}/evidence-passport`,"OFFICER")).assessmentId,assessment.id);
       assert.equal((await call(`/cases/${caseId}/resolve`,"OFFICER",body,key)).status,200);
     });
-    await t.test("working authorized resolution example, immutable explanation, close and withdrawal-safe retry",async()=>{
+    await scenario("working authorized resolution example, immutable explanation, close and withdrawal-safe retry",async()=>{
       const {caseId,body,grant}=await workflow();
       const key=crypto.randomUUID();
       const first=await call(`/cases/${caseId}/resolve`,"OFFICER",body,key);

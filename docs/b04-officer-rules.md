@@ -21,6 +21,10 @@ These are synthetic demo assumptions. They are not government rules, real
 eligibility policy, financial authorization or calibrated safety thresholds.
 An Admin can publish another validated parameter set without redeployment.
 Security checks and mandatory human resolution cannot be edited as parameters.
+`contentDigest` is lowercase SHA-256 of the UTF-8 `JSON.stringify` encoding of
+`{programRef,policyLabel,parameters}`, in that order; parameter keys use the
+frozen schema order shown in the table above. Author, time, ID and version are
+separate immutable publication metadata.
 
 The bounded eligibility rule requires an unambiguous scoped synthetic recipient,
 known enrollment and known monthly income. Missing/ambiguous inputs yield
@@ -192,6 +196,9 @@ Optional `B04_BASE_URL` overrides localhost:3400. Run live suites sequentially:
 they share demo roles and current synthetic policy. B04 retains immutable demo
 history, publishes new versions, installs narrowly scoped temporary lock/failure
 triggers removed in `finally`, and logs out its sessions. Use development only.
+`B04_LIVE_SCENARIO` is an optional substring selector for diagnosing one live
+scenario with real setup; selected runs report other scenarios as skipped.
+Leave it unset for the verification gate.
 
 Errors reuse the frozen catalog: 401 authentication; 403 role, assignment,
 department or consent denial; 404 authorized absent record; 409 `STALE_VERSION`,
