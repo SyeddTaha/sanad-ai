@@ -114,10 +114,11 @@ function randomKey() {
 export type IdempotencyEntry = {
   key: string;
   fingerprint: string;
-  status: "pending" | "succeeded";
+  status: "pending" | "rejected";
 };
 
 export const staffMutationKeys = new Map<string, IdempotencyEntry>();
+let activeStaffIdentity: string | null = null;
 
 function fingerprint(payload: unknown) {
   if (payload === undefined) return "{}";
@@ -143,7 +144,28 @@ export function markMutationSucceeded(
   payload?: unknown,
 ) {
   const entry = keys.get(action);
-  if (entry?.fingerprint === fingerprint(payload)) entry.status = "succeeded";
+  if (entry?.fingerprint === fingerprint(payload)) keys.delete(action);
+}
+
+export function markMutationRejected(
+  keys: Map<string, IdempotencyEntry>,
+  action: string,
+  payload?: unknown,
+) {
+  const entry = keys.get(action);
+  if (entry?.fingerprint === fingerprint(payload)) entry.status = "rejected";
+}
+
+export function bindStaffSession(keys: Map<string, IdempotencyEntry>, identity: string) {
+  if (activeStaffIdentity !== identity) {
+    keys.clear();
+    activeStaffIdentity = identity;
+  }
+}
+
+export function clearStaffMutationState(keys: Map<string, IdempotencyEntry>) {
+  keys.clear();
+  activeStaffIdentity = null;
 }
 
 export function getStaffApiMode(): StaffApiMode {
@@ -177,16 +199,26 @@ async function request(path: string, init: RequestInit, action?: string, keys?: 
   });
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    if (response.status === 401) throw new StaffApiError("UNAUTHENTICATED", "authentication.required", true);
-    if (response.status === 403) throw new StaffApiError("FORBIDDEN", "authorization.denied", false);
-    if (payload) {
+    let error: StaffApiError;
+    if (response.status === 401) error = new StaffApiError("UNAUTHENTICATED", "authentication.required", true);
+    else if (response.status === 403) error = new StaffApiError("FORBIDDEN", "authorization.denied", false);
+    else if (payload) {
       const parsed = ApiErrorEnvelopeSchema.safeParse(payload);
       if (parsed.success) {
-        const error = parsed.data.error;
-        throw new StaffApiError(error.code, error.messageKey, error.retryable);
+        const apiError = parsed.data.error;
+        error = new StaffApiError(apiError.code, apiError.messageKey, apiError.retryable);
+      } else {
+        error = new StaffApiError("SERVICE_UNAVAILABLE", "staff.endpoint.unavailable", true);
       }
+    } else {
+      error = new StaffApiError("SERVICE_UNAVAILABLE", "staff.endpoint.unavailable", true);
     }
-    throw new StaffApiError("SERVICE_UNAVAILABLE", "staff.endpoint.unavailable", true);
+    if (action && keys) {
+      const requestPayload = init.body ? JSON.parse(String(init.body)) : undefined;
+      const definitive = !error.retryable || ["UNAUTHENTICATED", "VALIDATION_FAILED", "STALE_VERSION", "STALE_ASSESSMENT", "INVALID_TRANSITION", "IDEMPOTENCY_CONFLICT", "CONSENT_REQUIRED", "ASSIGNMENT_REQUIRED", "INSUFFICIENT_SCOPE"].includes(error.code);
+      if (definitive) markMutationRejected(keys, action, requestPayload);
+    }
+    throw error;
   }
   return payload;
 }

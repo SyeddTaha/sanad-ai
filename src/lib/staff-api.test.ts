@@ -3,6 +3,9 @@ import test from "node:test";
 import {
   createIdempotencyKey,
   markMutationSucceeded,
+  markMutationRejected,
+  bindStaffSession,
+  clearStaffMutationState,
   parseStaffResponse,
   StaffApiError,
   createStaffApi,
@@ -56,9 +59,8 @@ test("keeps pending keys through ambiguous retries and does not reuse a succeede
   assert.equal(keys.get(action)?.status, "pending");
   assert.equal(createIdempotencyKey(keys, action, payload), key);
   markMutationSucceeded(keys, action, payload);
-  assert.equal(keys.get(action)?.status, "succeeded");
-  assert.equal(createIdempotencyKey(keys, action, payload), key);
-  assert.notEqual(createIdempotencyKey(keys, action, { expectedVersion: 9 }), key);
+  assert.equal(keys.has(action), false);
+  assert.notEqual(createIdempotencyKey(keys, action, payload), key);
 });
 
 test("maps authentication authorization stale and consent failures exactly", () => {
@@ -105,4 +107,44 @@ test("live resolution stays disabled until an Assessment ID is obtained", () => 
   assert.equal(isLiveResolutionAvailable("live", ""), false);
   assert.equal(isLiveResolutionAvailable("live", "70000000-0000-4000-8000-000000000001"), true);
   assert.equal(isLiveResolutionAvailable("fixture", null), true);
+});
+
+test("repeat success starts a new logical mutation", () => {
+  const keys = new Map();
+  const action = "resolve:case-1";
+  const payload = { expectedVersion: 4, reviewedAssessmentId: "70000000-0000-4000-8000-000000000001", reason: "review complete" };
+  const first = createIdempotencyKey(keys, action, payload);
+  markMutationSucceeded(keys, action, payload);
+  const repeat = createIdempotencyKey(keys, action, payload);
+  assert.notEqual(repeat, first);
+});
+
+test("timeout retry reuses the pending key", () => {
+  const keys = new Map();
+  const action = "escalate:case-1";
+  const payload = { expectedVersion: 3, reason: "needs priority review" };
+  const first = createIdempotencyKey(keys, action, payload);
+  const retry = createIdempotencyKey(keys, action, payload);
+  assert.equal(retry, first);
+});
+
+test("definitive rejection retains the original key for exact rejection replay", () => {
+  const keys = new Map();
+  const action = "resolve:case-1";
+  const payload = { expectedVersion: 4, reviewedAssessmentId: "70000000-0000-4000-8000-000000000001", reason: "review complete" };
+  const first = createIdempotencyKey(keys, action, payload);
+  markMutationRejected(keys, action, payload);
+  assert.equal(createIdempotencyKey(keys, action, payload), first);
+  assert.notEqual(createIdempotencyKey(keys, action, { ...payload, reason: "changed reason" }), first);
+});
+
+test("switching staff sessions clears mutation keys", () => {
+  const keys = new Map();
+  bindStaffSession(keys, "officer-a");
+  const first = createIdempotencyKey(keys, "close:case-1", { expectedVersion: 5 });
+  bindStaffSession(keys, "officer-b");
+  const afterSwitch = createIdempotencyKey(keys, "close:case-1", { expectedVersion: 5 });
+  assert.notEqual(afterSwitch, first);
+  clearStaffMutationState(keys);
+  assert.equal(keys.size, 0);
 });

@@ -5,7 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { logout, session } from "@/lib/auth/browser";
 import type { SessionContext } from "@/lib/auth/session-contract";
-import { getStaffApiMode, getStaffModeLabel } from "@/lib/staff-api";
+import {
+  bindStaffSession,
+  clearStaffMutationState,
+  getStaffApiMode,
+  getStaffModeLabel,
+  staffMutationKeys,
+} from "@/lib/staff-api";
 
 export default function StaffShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -18,6 +24,7 @@ export default function StaffShell({ children }: { children: ReactNode }) {
     let active = true;
     session().then((value) => {
       if (!active) return;
+      bindStaffSession(staffMutationKeys, value.principal.id);
       setContext(value);
       const role = value.principal.roles;
       if (pathname.startsWith("/staff/admin") && !role.includes("ADMIN")) {
@@ -27,6 +34,7 @@ export default function StaffShell({ children }: { children: ReactNode }) {
       }
     }).catch((cause: unknown) => {
       if (!active) return;
+      clearStaffMutationState(staffMutationKeys);
       if (cause instanceof Error && cause.message === "FORBIDDEN") {
         setError("FORBIDDEN: The authenticated session has no permitted staff role.");
         setChecking(false);
@@ -42,6 +50,7 @@ export default function StaffShell({ children }: { children: ReactNode }) {
   async function signOut() {
     try {
       await logout();
+      clearStaffMutationState(staffMutationKeys);
       router.replace("/login");
     } catch {
       setError("Sign-out could not be confirmed. The session remains active.");
