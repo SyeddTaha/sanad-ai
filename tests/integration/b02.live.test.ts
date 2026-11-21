@@ -12,6 +12,9 @@ const base = process.env.B02_BASE_URL ?? "http://localhost:3200";
 const origin = new URL(base).origin;
 test("B02 live consent HTTP, authorization, transactions and revocation", async (t) => {
   const db = await connectDatabase();
+  // pg_stat_activity snapshots are cached inside transactions. Observe from an
+  // independent autocommit connection so newly connected waiters stay visible.
+  const observer = await connectDatabase();
   const cookies = new Map<string,string>();
   const ids = new Map<string,string>();
   const keys: string[] = [];
@@ -44,9 +47,9 @@ test("B02 live consent HTTP, authorization, transactions and revocation", async 
   }
   const revoke = (id: string, version = 1) => request(`/api/v1/consents/${id}/revoke`, "CITIZEN_A", { expectedVersion: version });
   async function blockedBy(pid: number) {
-    const deadline = Date.now() + 12000;
+    const deadline = Date.now() + 20000;
     while (Date.now() < deadline) {
-      const { rows } = await db.query("select pid from pg_stat_activity where $1::int=any(pg_blocking_pids(pid))", [pid]);
+      const { rows } = await observer.query("select pid from pg_stat_activity where $1::int=any(pg_blocking_pids(pid))", [pid]);
       if (rows.length) return;
       await delay(40);
     }
@@ -148,24 +151,24 @@ test("B02 live consent HTTP, authorization, transactions and revocation", async 
     await t.test("revocation-first ordering blocks a concurrent protected write until it can observe revocation", async () => {
       const shared = await grant(helperBody());
       await db.query("begin");
-      let write: Promise<unknown> | undefined;
       let outcome: Promise<unknown> | undefined;
+      let failure: unknown;
       try {
         await db.query("select id from public.case_reservations where id=$1 for update", [caseId]);
         const pid = Number((await db.query("select pg_backend_pid() as pid")).rows[0].pid);
-        write = withAuthorizedCase(serviceRequest("HELPER"), permission(caseId, "ADD_EVIDENCE"), async (tx) => {
+        const write = withAuthorizedCase(serviceRequest("HELPER"), permission(caseId, "ADD_EVIDENCE"), async (tx) => {
           await tx.db.query("update public.cases set priority='HIGH' where id=$1", [caseId]);
           assert.fail("Write ran after committed revocation");
         });
-        // Attach the rejection assertion before the transaction releases its lock.
-        outcome = assert.rejects(write, { code: "CONSENT_REQUIRED" });
+        // Capture immediately and always drain it, including on failed barriers.
+        outcome = write.catch((error) => { failure = error; });
         await blockedBy(pid);
         await db.query(`with revoked as (update public.consent_grants set revoked_at=clock_timestamp() where id=$1 returning id)
           insert into public.audit_events(request_id,actor_id,action,outcome,target_id,authorization_ref)
           select $2,$3,'CONSENT_WITHDRAWN','ALLOWED',$4,id from revoked`, [shared.id, crypto.randomUUID(), ids.get("CITIZEN_A"), caseId]);
         await db.query("commit");
-      } finally { await db.query("rollback"); }
-      await outcome;
+      } finally { await db.query("rollback"); await outcome; }
+      assert.equal((failure as { code?: string } | undefined)?.code, "CONSENT_REQUIRED");
       assert.equal((await db.query("select priority from public.cases where id=$1", [caseId])).rows[0].priority, "NORMAL");
     });
     await t.test("direct database clients still cannot access case, grant or replay storage", async () => {
@@ -187,5 +190,6 @@ test("B02 live consent HTTP, authorization, transactions and revocation", async 
     if (keys.length) await db.query("delete from public.consent_operation_keys where key=any($1::text[])", [keys]);
     for (const actor of cookies.keys()) await request("/api/v1/auth/logout", actor, {});
     await db.end();
+    await observer.end();
   }
 });
