@@ -15,10 +15,12 @@
     "db:seed": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/seed-demo.ts",
     "test:backend:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b01.live.test.ts",
     "test:b02:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b02.live.test.ts",
-    "test:b03:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b03.live.test.ts"
+    "test:b03:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b03.live.test.ts",
+    "test:ai-trust": "node --env-file-if-exists=.env.local --import tsx --test spikes/ai-trust/crypto/*.test.ts spikes/ai-trust/ai/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",
+    "jose": "6.2.18",
     "next": "16.4.6",
     "pg": "^8.23.1",
     "react": "19.3.0",
