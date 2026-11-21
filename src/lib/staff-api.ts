@@ -37,6 +37,7 @@ const SuccessSchema = <T extends z.ZodType>(data: T) =>
 
 const OfficerQueueResponseSchema = SuccessSchema(CollectionSchema(OfficerQueueItemSchema));
 const DispatchResponseSchema = SuccessSchema(CollectionSchema(DispatchItemSchema));
+const DispatchMutationResponseSchema = SuccessSchema(DispatchItemSchema);
 const CaseActionResponseSchema = SuccessSchema(z.strictObject({ case: CaseSchema }));
 const ResolutionResponseSchema = SuccessSchema(z.strictObject({
   case: CaseSchema,
@@ -44,6 +45,18 @@ const ResolutionResponseSchema = SuccessSchema(z.strictObject({
   resolutionId: IdSchema,
 }));
 const EvidenceResponseSchema = SuccessSchema(CollectionSchema(EvidenceItemSchema));
+const ProgramInputSchema = z.strictObject({
+  id: IdSchema,
+  caseId: IdSchema,
+  version: VersionSchema,
+  source: z.literal("SYNTHETIC_DEMO"),
+  recipientMatch: z.enum(["MATCH", "AMBIGUOUS", "UNKNOWN"]),
+  enrollment: z.enum(["ACTIVE", "INACTIVE", "UNKNOWN"]),
+  monthlyIncomeMinor: z.number().int().nonnegative().nullable(),
+  recordedBy: IdSchema,
+  recordedAt: TimestampSchema,
+});
+const ProgramInputsResponseSchema = SuccessSchema(CollectionSchema(ProgramInputSchema));
 const HistoryResponseSchema = SuccessSchema(CollectionSchema(CaseEventSchema));
 const DecisionSchema = z.strictObject({
   id: IdSchema,
@@ -82,11 +95,13 @@ export type CaseDecision = z.infer<typeof DecisionSchema>;
 const parsers = {
   officerQueue: OfficerQueueResponseSchema,
   dispatch: DispatchResponseSchema,
+  dispatchMutation: DispatchMutationResponseSchema,
   caseAction: CaseActionResponseSchema,
   resolution: ResolutionResponseSchema,
   evidence: EvidenceResponseSchema,
   history: HistoryResponseSchema,
   decisions: DecisionsResponseSchema,
+  programInputs: ProgramInputsResponseSchema,
   rule: RuleResponseSchema,
   assessment: AssessmentResponseSchema,
 };
@@ -211,9 +226,7 @@ async function request(path: string, init: RequestInit, action?: string, keys?: 
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     let error: StaffApiError;
-    if (response.status === 401) error = new StaffApiError("UNAUTHENTICATED", "authentication.required", true);
-    else if (response.status === 403) error = new StaffApiError("FORBIDDEN", "authorization.denied", false);
-    else if (payload) {
+    if (payload) {
       const parsed = ApiErrorEnvelopeSchema.safeParse(payload);
       if (parsed.success) {
         const apiError = parsed.data.error;
@@ -221,6 +234,10 @@ async function request(path: string, init: RequestInit, action?: string, keys?: 
       } else {
         error = new StaffApiError("SERVICE_UNAVAILABLE", "staff.endpoint.unavailable", true);
       }
+    } else if (response.status === 401) {
+      error = new StaffApiError("UNAUTHENTICATED", "authentication.required", true);
+    } else if (response.status === 403) {
+      error = new StaffApiError("FORBIDDEN", "authorization.denied", false);
     } else {
       error = new StaffApiError("SERVICE_UNAVAILABLE", "staff.endpoint.unavailable", true);
     }
@@ -237,38 +254,69 @@ async function request(path: string, init: RequestInit, action?: string, keys?: 
 export function createStaffApi(keys = staffMutationKeys, mode = getStaffApiMode()) {
   return {
     mode,
-    getOfficerQueue: async (cursor?: string, status?: string) => {
+    getOfficerQueue: async (cursor?: string, status?: string, limit?: number, sort?: "priority" | "confidence" | "oldest") => {
       if (mode === "fixture") return null;
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
       if (status) params.set("status", status);
+      if (limit !== undefined) params.set("limit", String(limit));
+      if (sort) params.set("sort", sort);
       return parsers.officerQueue.parse(await request(`cases${params.size ? `?${params}` : ""}`, { method: "GET" }));
     },
-    getDispatch: async (cursor?: string) => {
+    getDispatch: async (cursor?: string, status?: string, limit?: number, sort?: "priority" | "oldest") => {
       if (mode === "fixture") return null;
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
+      if (status) params.set("status", status);
+      if (limit !== undefined) params.set("limit", String(limit));
+      if (sort) params.set("sort", sort);
       return parsers.dispatch.parse(await request(`admin/dispatch${params.size ? `?${params}` : ""}`, { method: "GET" }));
     },
     getCase: async (caseId: string) => {
       if (mode === "fixture") return null;
       return SuccessSchema(CaseSchema).parse(await request(`cases/${caseId}`, { method: "GET" })).data;
     },
-    getEvidence: async (caseId: string) => {
+    getEvidence: async (caseId: string, cursor?: string, limit?: number) => {
       if (mode === "fixture") return null;
-      return parsers.evidence.parse(await request(`cases/${caseId}/evidence`, { method: "GET" })).data;
+      const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
+      if (limit !== undefined) params.set("limit", String(limit));
+      return parsers.evidence.parse(await request(`cases/${caseId}/evidence${params.size ? `?${params}` : ""}`, { method: "GET" })).data;
     },
-    getDecisions: async (caseId: string) => {
+    getDecisions: async (caseId: string, cursor?: string, limit?: number) => {
       if (mode === "fixture") return null;
-      return parsers.decisions.parse(await request(`cases/${caseId}/decisions`, { method: "GET" })).data;
+      const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
+      if (limit !== undefined) params.set("limit", String(limit));
+      return parsers.decisions.parse(await request(`cases/${caseId}/decisions${params.size ? `?${params}` : ""}`, { method: "GET" })).data;
+    },
+    getProgramInputs: async (caseId: string, cursor?: string, limit?: number) => {
+      if (mode === "fixture") return null;
+      const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
+      if (limit !== undefined) params.set("limit", String(limit));
+      return parsers.programInputs.parse(await request(`cases/${caseId}/program-inputs${params.size ? `?${params}` : ""}`, { method: "GET" })).data;
     },
     getHistory: async (caseId: string) => {
       if (mode === "fixture") return null;
       return parsers.history.parse(await request(`cases/${caseId}/history`, { method: "GET" })).data;
     },
-    getRule: async () => {
+    getRule: async (programRef = "program_demo") => {
       if (mode === "fixture") return null;
-      return parsers.rule.parse(await request("rules/current", { method: "GET" })).data;
+      const params = new URLSearchParams({ programRef });
+      return parsers.rule.parse(await request(`rules/current?${params}`, { method: "GET" })).data;
+    },
+    assignCase: async (caseId: string, body: { expectedVersion: number; departmentId: string; officerId: string; reason: string }) => {
+      if (mode === "fixture") throw new StaffApiError("SERVICE_UNAVAILABLE", "staff.fixture.mutations_disabled", false);
+      const payload = await request(`cases/${caseId}/assign`, { method: "POST", body: JSON.stringify(body) }, `assign:${caseId}`, keys);
+      markMutationSucceeded(keys, `assign:${caseId}`, body);
+      return parsers.dispatchMutation.parse(payload).data;
+    },
+    setPriority: async (caseId: string, body: { expectedVersion: number; departmentId: string; priority: "NORMAL" | "HIGH"; reason: string }) => {
+      if (mode === "fixture") throw new StaffApiError("SERVICE_UNAVAILABLE", "staff.fixture.mutations_disabled", false);
+      const payload = await request(`cases/${caseId}/priority`, { method: "POST", body: JSON.stringify(body) }, `priority:${caseId}`, keys);
+      markMutationSucceeded(keys, `priority:${caseId}`, body);
+      return parsers.dispatchMutation.parse(payload).data;
     },
     mutate: async (action: string, caseId: string, body: unknown) => {
       if (mode === "fixture") throw new StaffApiError("SERVICE_UNAVAILABLE", "staff.fixture.mutations_disabled", false);

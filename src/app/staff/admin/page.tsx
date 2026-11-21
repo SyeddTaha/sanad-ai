@@ -76,8 +76,10 @@ export default function AdminPage() {
         setCurrentVersion((version) => (version ?? 0) + 1);
         setMessage("Fixture-only synthetic policy published locally. No live policy changed.");
       } else {
-        await api.publishRule({ programRef: "program_demo", expectedCurrentVersion: currentVersion, parameters });
-        setMessage("Synthetic policy published.");
+        const published = await api.publishRule({ programRef: "program_demo", expectedCurrentVersion: currentVersion, parameters });
+        setParameters(published.rule.parameters);
+        setCurrentVersion(published.rule.version);
+        setMessage(`Synthetic policy published as rule version ${published.rule.version}.`);
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Policy publication failed");

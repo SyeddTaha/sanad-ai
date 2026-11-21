@@ -11,6 +11,17 @@ import { createStaffApi, getStaffApiMode, isLiveAssessmentFresh, isLiveResolutio
 import { fixtureCaseDetails, fixtureDecisions, fixtureEvidence } from "@/lib/staff-fixtures";
 
 type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
+type SyntheticProgramInput = {
+  id: string;
+  caseId: string;
+  version: number;
+  source: "SYNTHETIC_DEMO";
+  recipientMatch: "MATCH" | "AMBIGUOUS" | "UNKNOWN";
+  enrollment: "ACTIVE" | "INACTIVE" | "UNKNOWN";
+  monthlyIncomeMinor: number | null;
+  recordedBy: string;
+  recordedAt: string;
+};
 
 export default function OfficerCasePage() {
   const params = useParams<{ caseId: string }>();
@@ -19,6 +30,7 @@ export default function OfficerCasePage() {
   const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
   const [decisions, setDecisions] = useState<CaseDecision[]>([]);
   const [history, setHistory] = useState<unknown[]>([]);
+  const [programInputs, setProgramInputs] = useState<SyntheticProgramInput[]>([]);
   const [reason, setReason] = useState("");
   const [assessmentId, setAssessmentId] = useState("");
   const [assessmentEvidenceVersion, setAssessmentEvidenceVersion] = useState<number | null>(null);
@@ -36,18 +48,21 @@ export default function OfficerCasePage() {
       api.getEvidence(caseId),
       api.getDecisions(caseId),
       api.getHistory(caseId),
-    ]).then(([detail, evidenceResult, decisionResult, historyResult]) => {
+      api.getProgramInputs(caseId),
+    ]).then(([detail, evidenceResult, decisionResult, historyResult, programInputResult]) => {
       if (!active) return;
       if (api.mode === "fixture") {
         setCaseItem(detail ?? fixtureCaseDetails[caseId] ?? null);
         setEvidence(evidenceResult?.items ?? fixtureEvidence[caseId] ?? []);
         setDecisions(decisionResult?.items ?? fixtureDecisions[caseId] ?? []);
         setHistory(historyResult?.items ?? []);
+        setProgramInputs(programInputResult?.items ?? []);
       } else {
         setCaseItem(detail);
         setEvidence(evidenceResult?.items ?? []);
         setDecisions(decisionResult?.items ?? []);
         setHistory(historyResult?.items ?? []);
+        setProgramInputs(programInputResult?.items ?? []);
       }
       setAssessmentId("");
       setAssessmentEvidenceVersion(null);
@@ -177,6 +192,21 @@ export default function OfficerCasePage() {
           <section className="rounded border border-slate-200 bg-white p-4">
             <h2 className="font-semibold">Evidence</h2>
             {evidence.length === 0 ? <p className="mt-2 text-sm text-slate-600">No evidence is available to this review grant.</p> : <ul className="mt-3 space-y-3">{evidence.map((item) => <li className="border-t pt-3 text-sm" key={item.id}><strong>{item.kind}</strong><p className="mt-1 whitespace-pre-wrap">{"text" in item.content ? item.content.text : item.content.noticeToken ?? item.content.messageText ?? ""}</p><p className="mt-1 text-xs text-slate-500">Evidence version {item.evidenceVersion}</p></li>)}</ul>}
+          </section>
+          <section className="rounded border border-slate-200 bg-white p-4">
+            <h2 className="font-semibold">Synthetic program inputs</h2>
+            {programInputs.length === 0 ? (
+              <p className="mt-2 text-sm text-slate-600">No synthetic program inputs are available.</p>
+            ) : (
+              <ul className="mt-3 space-y-2 text-sm">
+                {programInputs.map((input) => (
+                  <li className="border-t pt-2" key={input.id}>
+                    <strong>{input.source}</strong> — version {input.version}
+                    <p>Recipient: {input.recipientMatch}; enrollment: {input.enrollment}; monthly income: {input.monthlyIncomeMinor === null ? "UNKNOWN" : input.monthlyIncomeMinor}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
           <section className="rounded border border-slate-200 bg-white p-4">
             <h2 className="font-semibold">Latest assessment</h2>
