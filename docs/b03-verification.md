@@ -16,12 +16,15 @@ the explicit unavailable rule basis. Frozen v1 exports remain unchanged. See
 | `npm run typecheck` | Exit 0. |
 | `npm run lint` | Exit 0. |
 | `npm run build` | Exit 0, including all eight new route files / nine HTTP operations. |
+| `npm run test:b03:live` on the final production build | 12 passed, 0 failed/skipped, real Supabase/Auth/PostgreSQL; citizen/helper submission, concurrent retries, stale writes, withdrawal, Passport history, rollback, officer expiry and direct database denial. |
+| B02 live suite on B03 production build | 8 passed, 0 failed/skipped, using real Supabase/Auth/PostgreSQL; both concurrent withdrawal orderings and rollback pass. |
 | `npm run db:migrate` | All four B03 migrations applied to development Supabase; repeat reports already current. |
 | Diff/public assets secret check | Passed against configured private values, changed content and 11 browser build assets; values never printed. |
 | Documentation/diff checks | Eight local links resolved; `git diff --check` passed; frozen contracts unchanged. |
 
-Final live B03/B02 suites are running against the production build containing
-the authorization review fix. Their final results will be recorded before push.
+Both live suites ran against the final production build containing the
+authorization review fix. B03 completed in 463 seconds; B02 in 306 seconds.
+These suites use actual development services, not provider substitutes.
 
 The backend suite initially found an outdated seed-test expectation of three
 migrations. It now checks the explicit seven-file inventory and repeat seeding
@@ -82,3 +85,7 @@ a standalone raw-evidence read API is a future integration, not a claimed B03
 endpoint. No officer resolution, API-key auth, audio/UI redesign, public
 deployment or browser acceptance is claimed. Live tests retain synthetic
 immutable history and end their Auth sessions. No B04 work is started.
+
+The B03 verification gate passes for this approved scope. No known P0/P1 defect
+remains in the scoped workflow. The feature is committed for PR review; it is
+not merged and does not authorize resolution with an unavailable rule basis.
