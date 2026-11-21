@@ -159,10 +159,40 @@
   color: var(--citizen-white);
 }
 
-.citizen-audio-button {
-  text-decoration: line-through;
-  text-decoration-color: var(--citizen-saffron);
-  text-decoration-thickness: 2px;
+.citizen-switch-compact {
+  display: none;
+}
+
+.citizen-switch-announcement {
+  width: min(100% - 2rem, 74rem);
+  margin: 0.25rem auto 0;
+  color: var(--citizen-jade-dark);
+  font-weight: 700;
+}
+
+.citizen-audio-control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-block: 0.8rem;
+}
+
+.citizen-audio-control .citizen-button-quiet {
+  background: var(--citizen-ink);
+}
+
+.citizen-audio-play {
+  border-color: var(--citizen-jade-dark);
+  background: var(--citizen-white);
+  color: var(--citizen-jade-dark);
+}
+
+.citizen-audio-status {
+  flex-basis: 100%;
+  min-height: 1.75rem;
+  color: var(--citizen-ink);
+  font-weight: 700;
 }
 
 .citizen-nav {
@@ -757,6 +787,17 @@
   padding-block: 3rem;
 }
 
+.citizen-session-ended {
+  min-height: 45vh;
+  border-inline-start: 5px solid var(--citizen-jade);
+  background: var(--citizen-white);
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.citizen-session-ended h1 {
+  margin-block-start: 0;
+}
+
 .citizen-loading-line {
   width: min(100%, 32rem);
   height: 1.1rem;
@@ -789,6 +830,14 @@
 
   .citizen-header-actions {
     max-width: 68%;
+  }
+
+  .citizen-switch-wide {
+    display: none;
+  }
+
+  .citizen-switch-compact {
+    display: inline;
   }
 
   .citizen-prototype-tag {
