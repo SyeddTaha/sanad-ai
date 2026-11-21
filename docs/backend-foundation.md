@@ -211,9 +211,9 @@ Final check counts, review findings and exact file inventory are recorded in
 
 ## Remaining boundaries
 
-The official source PDF and handoff file referenced by AGENTS.md are absent;
-the canonical spec, frozen contracts and six accepted ADRs supplied the available
-authority. No source-PDF fidelity claim is made. Browser/device UX, Urdu audio,
+The official requirements are in [the Markdown challenge brief](brief/AI_Hackathon_Problem_Statement.md),
+as confirmed by the backend owner for B02; the [master handoff](brief/SANAD_Hackathon_Master_Handoff.md)
+provides context. Browser/device UX, Urdu audio,
 Vercel deployment, OAuth, password-reset UI, refresh-token rotation, case-level
 policy enforcement and AI behavior are not demonstrated by B01. B02 can build on
 verified identity and persistence, but must implement the operational consent

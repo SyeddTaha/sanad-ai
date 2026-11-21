@@ -3,6 +3,9 @@ synthetic accounts and frontend/backend authentication integration, see
 [the backend foundation guide](docs/backend-foundation.md) and
 [verification evidence](docs/b01-verification.md). The minimal sign-in page is `/login`.
 
+B02 centralized authorization, consent endpoint schemas, purpose disclosures and
+teammate integration examples are in [the RBAC and consent handoff](docs/b02-rbac-consent.md).
+
 ## Getting Started
 
 First, run the development server:

@@ -21,7 +21,7 @@ Provide distinct Citizen, Community Helper, Department Officer, Admin, and Audit
 
 ### Source and decision authority
 
-The official AI_Hackathon_Problem_Statement PDF is authoritative, but no PDF is present in the workspace. The [Markdown challenge brief](../../docs/brief/AI_Hackathon_Problem_Statement.md) is the provisional requirements source; fidelity to the PDF remains unverified. The [master handoff](../../docs/brief/SANAD_Hackathon_Master_Handoff.md) supplies context and proposals, not evidence of implementation. The [copilot guide](../../docs/brief/Hackathon_Copilot_All_In_One.md) supplies process advice.
+The owner confirmed the [Markdown challenge brief](../../docs/brief/AI_Hackathon_Problem_Statement.md) as the official requirements source for B02; it takes precedence. The [master handoff](../../docs/brief/SANAD_Hackathon_Master_Handoff.md) supplies context and proposals, not evidence of implementation. The [copilot guide](../../docs/brief/Hackathon_Copilot_All_In_One.md) supplies process advice. Earlier implementation-gate statements below record the contract-freeze baseline; current B02 interfaces and evidence live in [the B02 handoff](../../docs/b02-rbac-consent.md).
 
 Use [the domain glossary](../../GLOSSARY.md) and these accepted decisions:
 
@@ -73,7 +73,7 @@ Explicitly pending: full draft and endpoint contracts; mock service interfaces;
 full AI output contracts; runtime authorization and persistence; OpenAPI
 projection; crypto feasibility (Developer 2); AI provider feasibility;
 accessibility and deployment verification.
-Operational catalogs, official-PDF fidelity and live demo parameters also retain
+Operational catalogs and live demo parameters also retain
 their recorded prerequisites. Approved fixture values are examples only.
 
 The bounded approval narrows the initial G2 freeze to the existing export
@@ -592,13 +592,13 @@ The six interview decisions remain settled, with ADR 0005's shared-contract gove
 | G1: named owner and delegated authority | Designated human accepts shared-schema/migration ownership and exercises delegated shared-contract approval authority. | Owner explicitly accepted ownership, all 17 decisions and bounded freeze. Individual teammate signoff is no longer blocking under the ADR 0005 amendment; no individual reviews are asserted. |
 | G2: bounded freeze and deferred interfaces | For current exports: delegated owner authorization, `v1.0.0` and fresh 25-test/typecheck/lint/build evidence before normal protected merge. Broader draft/endpoint/mock/AI contracts, grant/dispatch matrix, bootstrap implementation, OpenAPI projection and direct-API integration evidence remain separate gates. | Baseline shapes/fixtures from `11de106` retained and promoted to `v1.0.0`; fresh 25/25 contract tests, typecheck, lint and production build all passed on 21 November 2026, as recorded in the approval ledger and PR. Normal GitHub merge protections still apply. No unqualified G2 or integration clearance is claimed. |
 | G3: exact crypto compatibility | Chosen JOSE library supports protected `alg: Ed25519`; run original/mutation/unknown-key fixtures without substituting `EdDSA`. | Pending Developer 2's feasibility work. Blocks Signed Notice implementation claims. |
-| G4: authoritative source | Supply/verify the requested official PDF or confirm the Markdown is its faithful complete extraction. | PDF absent; provisional-source limitation remains. |
+| G4: authoritative source | Use the owner-designated official problem statement. | Owner explicitly designated the available Markdown problem statement as authoritative for B02. |
 | G5: configured services | Verify Supabase/auth/database setup, real AI provider/model/quotas and server credentials, deployment access; document names of required variables without values. | Not established by this session. Blocks dependent integrations and live claims, not contract drafting. |
 | G6: demo parameters and narration | Owner reviews operational eligibility/routing values and synthetic cost assumptions; test Urdu scripts, dynamic/fallback coverage, and Citizen-authenticated consent handoff. | Existing fixture values approved as illustrative examples only. Operational policies, providers, recordings, handoff and accessibility evidence remain pending. |
 
 The human owner approved the bounded contract choices for reserved Case IDs, minimal administrative dispatch, scalar limits and terminal consent handling without authorizing their runtime implementation here. These choices project the existing ADRs with ADR 0005's delegated-governance amendment. Full draft/endpoint contracts, mock interfaces, full AI output contracts, runtime authorization/persistence, OpenAPI, crypto/AI-provider feasibility and accessibility/deployment verification remain explicitly pending. Individual teammate signoff is no longer blocking; that is not a claim of individual approval. The freeze does not waive implementation gates or authorize B01 or another backend feature. Surface compatibility failures explicitly; never hide them behind algorithm substitution or canned AI.
 
-The source document names in the original engineering source-of-truth list differ from actual available brief filenames. This spec links to the actual files and records the missing-PDF limitation without modifying engineering instructions. The root specification entry links here so agents can find the local-tracker spec without maintaining duplicate contract text.
+The engineering source-of-truth list now names the available official Markdown brief and master handoff. The root specification entry links here so agents can find the local-tracker spec without maintaining duplicate contract text.
 
 ### Planning completion and evidence status
 
