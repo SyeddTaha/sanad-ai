@@ -265,3 +265,14 @@ test("officer queue confidence requires evidence sharing in addition to Case met
   const queue=(await (await handleStaffQueue(request(4),"officer",dependencies(4))).json()).data.items;
   assert.equal(queue.some((item:{caseId:string})=>item.caseId===record.id),false);
 });
+
+test("an inaccessible queue cursor cannot reveal ordering metadata from another Case",async()=>{
+  await reviewedCase();
+  const foreign=await submitted();
+  await db.query("update public.cases set priority='HIGH' where id=$1",[foreign.id]);
+  const query=request(4);
+  query.nextUrl.searchParams.set("cursor",foreign.id);
+  const result=await handleStaffQueue(query,"officer",dependencies(4));
+  assert.equal(result.status,200);
+  assert.deepEqual((await result.json()).data,{items:[],nextCursor:null});
+});

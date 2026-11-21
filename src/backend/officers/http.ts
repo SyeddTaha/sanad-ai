@@ -99,15 +99,16 @@ export async function handleStaffQueue(request: NextRequest, kind: "officer" | "
       const confidence=(alias:string)=>`coalesce((select (a.record#>>'{ai,confidence}')::numeric from public.assessments a where a.case_id=${alias}.id order by a.assessed_at desc,a.id desc limit 1),-1)`;
       const order=(alias:string)=>sort==="oldest" ? `${alias}.submitted_at,${alias}.id` : sort==="confidence" ? `${confidence(alias)},${alias}.priority,${alias}.submitted_at,${alias}.id` : `${alias}.priority,${kind==="officer" ? confidence(alias)+"," : ""}${alias}.submitted_at,${alias}.id`;
       const action = kind === "officer" ? "READ_CASE" : "ASSIGN_CASE";
-      const { rows } = await tx.db.query(`select c.id,${kind==="officer" ? confidence("c") : "null"} as confidence from public.cases c where
-        ($1='dispatch' or c.assigned_officer_id=$2) and exists (
-          select 1 from public.consent_grants g where g.case_id=c.id and g.recipient_type='DEPARTMENT'
+      const visible=(alias:string)=>`($1='dispatch' or ${alias}.assigned_officer_id=$2) and exists (
+          select 1 from public.consent_grants g where g.case_id=${alias}.id and g.recipient_type='DEPARTMENT'
           and g.purpose='synthetic_department_review' and g.recipient_id=any($3::uuid[])
-          and ($1='dispatch' or g.recipient_id=c.assigned_department_id)
+          and ($1='dispatch' or g.recipient_id=${alias}.assigned_department_id)
           and ($1='dispatch' or 'READ_EVIDENCE'::public.sanad_consent_action=any(g.actions))
           and g.revoked_at is null and g.created_at<=clock_timestamp() and g.expires_at>clock_timestamp()
-          and $4::public.sanad_consent_action=any(g.actions))
-        and ($5::uuid is null or (${order("c")})>(select ${order("x")} from public.cases x where x.id=$5))
+          and $4::public.sanad_consent_action=any(g.actions))`;
+      const { rows } = await tx.db.query(`select c.id,${kind==="officer" ? confidence("c") : "null"} as confidence from public.cases c where
+        ${visible("c")}
+        and ($5::uuid is null or (${order("c")})>(select ${order("x")} from public.cases x where x.id=$5 and ${visible("x")}))
         and ($7::text is null or c.status=$7)
         order by ${order("c")} limit $6`, [kind, tx.identity.principal.id, tx.identity.departmentIds, action, cursor, limit + 1,status]);
       const permission = { action: action as "READ_CASE" | "ASSIGN_CASE", purpose: "synthetic_department_review" };
