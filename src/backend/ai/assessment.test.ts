@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { assessReliefMessage, type ReliefMessageProvider } from "./assessment";
 import { A01_SCENARIOS } from "./a01-scenarios";
+import { URDU_SCENARIOS } from "./urdu-scenarios";
 
 const NORMAL = "Sindh Relief Authority issued a relief payment of PKR 25000 for payment reference PAY-77821. Keep this message for your records.";
 
@@ -50,7 +51,7 @@ test("treats message instructions as untrusted and forces suspicious officer rev
   assert.equal(result.status, "SUCCEEDED");
   assert.equal(result.classification, "SUSPICIOUS_MESSAGE");
   assert.equal(result.recommendedRoute, "OFFICER_REVIEW");
-  assert.equal(result.extractedClaims.amountMinor, null, "an amount absent from the message is never accepted from the model");
+  assert.equal(result.extractedClaims.amountMinor, 10_000_000, "the literal message amount is extracted independently of model output");
   assert.match(result.explanation, /review|جائزہ/u);
 });
 
@@ -68,6 +69,30 @@ test("invalid schema output abstains without returning a model route", async () 
   assert.equal(result.failureCode, "SCHEMA_MISMATCH");
   assert.equal(result.recommendedRoute, "OFFICER_REVIEW");
   assert.equal(result.confidence, null);
+});
+
+test("null missing-information and textual confidence values fail closed", async () => {
+  for (const invalid of [
+    output({ missingInformation: null }),
+    output({ confidence: "high" }),
+  ]) {
+    const result = await assessReliefMessage(NORMAL, { provider: providerFor(invalid), timeoutMs: 1000 });
+    assert.equal(result.status, "INVALID_OUTPUT");
+    assert.equal(result.failureCode, "SCHEMA_MISMATCH");
+    assert.equal(result.recommendedRoute, "OFFICER_REVIEW");
+    assert.equal(result.confidence, null);
+  }
+});
+
+test("model authority fields cannot enter a successful assessment", async () => {
+  const result = await assessReliefMessage(NORMAL, {
+    provider: providerFor({ ...output(), paymentStatus: "SETTLED", eligibility: "ELIGIBLE", approved: true }), timeoutMs: 1000,
+  });
+  assert.equal(result.status, "INVALID_OUTPUT");
+  assert.equal(result.recommendedRoute, "OFFICER_REVIEW");
+  assert.equal("paymentStatus" in result, false);
+  assert.equal("eligibility" in result, false);
+  assert.equal("approved" in result, false);
 });
 
 test("malformed provider JSON abstains safely", async () => {
@@ -163,5 +188,53 @@ test("the five A01 scenarios retain their deterministic routing expectations", a
       amountMinor: scenario.expected.amount,
       paymentReference: scenario.expected.reference,
     }, scenario.id);
+    assert.equal("paymentStatus" in result, false, scenario.id);
+    assert.equal("eligibility" in result, false, scenario.id);
+    assert.equal("approved" in result, false, scenario.id);
+    assert.doesNotMatch(result.explanation, /signature.{0,20}valid|payment.{0,20}settled|eligible|ادائیگی.{0,20}مکمل/u, scenario.id);
   }
+});
+
+test("synthetic Urdu and mixed-language cases preserve extraction and safe routing", async () => {
+  for (const scenario of URDU_SCENARIOS) {
+    const completion = output({
+      extractedIssuerClaim: scenario.expected.issuer,
+      claimedAmountMinor: scenario.expected.amount,
+      paymentRef: scenario.expected.reference,
+      classification: scenario.expected.classification,
+      suggestedRoute: "INFORMATION_ONLY",
+    });
+    const result = await assessReliefMessage(scenario.message, { provider: providerFor(completion), timeoutMs: 1000 });
+    assert.equal(result.status, "SUCCEEDED", scenario.id);
+    assert.equal(result.classification, scenario.expected.classification, scenario.id);
+    assert.equal(result.recommendedRoute, scenario.expected.route, scenario.id);
+    assert.deepEqual(result.extractedClaims, {
+      issuer: scenario.expected.issuer,
+      amountMinor: scenario.expected.amount,
+      paymentReference: scenario.expected.reference,
+    }, scenario.id);
+    assert.match(result.explanation, /[\u0600-\u06ff]/u, scenario.id);
+    assert.doesNotMatch(result.explanation, /signature|settled|eligible/i, scenario.id);
+    assert.equal("paymentStatus" in result, false, scenario.id);
+    assert.equal("eligibility" in result, false, scenario.id);
+    assert.equal("approved" in result, false, scenario.id);
+  }
+
+  const paymentDispute = URDU_SCENARIOS.find((scenario) => scenario.id === "urdu-payment-dispute")!;
+  const malformedClaims = await assessReliefMessage(paymentDispute.message, {
+    provider: providerFor(output({
+      extractedIssuerClaim: "مجھے PAY-UR-04 کے تحت",
+      claimedAmountMinor: 2_500_000,
+      paymentRef: null,
+      classification: "PAYMENT_DISPUTE",
+    })), timeoutMs: 1000,
+  });
+  assert.equal(malformedClaims.extractedClaims.issuer, null);
+  assert.equal(malformedClaims.extractedClaims.paymentReference, "PAY-UR-04");
+
+  const falseAcronym = await assessReliefMessage(paymentDispute.message, {
+    provider: providerFor(output({ extractedIssuerClaim: "PAY", paymentRef: null, classification: "PAYMENT_DISPUTE" })), timeoutMs: 1000,
+  });
+  assert.equal(falseAcronym.extractedClaims.issuer, null);
+  assert.equal(falseAcronym.extractedClaims.paymentReference, "PAY-UR-04");
 });
