@@ -12,6 +12,7 @@ test("B03 live protected evidence persistence, concurrent writes and rollback", 
   const observer = await connectDatabase();
   const cookies = new Map<string,string>();
   const ids = new Map<string,string>();
+  let departmentId = "";
   const call = (path: string, actor: string, body?: unknown, key = crypto.randomUUID(), method = body === undefined ? "GET" : "POST") => fetch(base + "/api/v1" + path, {
     method, headers: { cookie: cookies.get(actor)!, origin,
       ...(body === undefined ? {} : { "content-type": "application/json", "idempotency-key": key }) },
@@ -37,11 +38,13 @@ test("B03 live protected evidence persistence, concurrent writes and rollback", 
   }
   try {
     await t.test("real Auth logins and development migration ledger", async () => {
-      for (const actor of ["CITIZEN_A", "CITIZEN_B", "HELPER", "ADMIN"]) {
+      for (const actor of ["CITIZEN_A", "CITIZEN_B", "HELPER", "ADMIN", "OFFICER"]) {
         const response = await fetch(base + "/api/v1/auth/login", { method: "POST", headers: { origin, "content-type": "application/json" },
           body: JSON.stringify({ email: actor.toLowerCase().replaceAll("_", "-") + "@demo.sanad.test", password: process.env["DEMO_" + actor + "_PASSWORD"] }) });
         assert.equal(response.status, 200, actor + " login");
-        ids.set(actor, (await response.json()).data.principal.id);
+        const data = (await response.json()).data;
+        ids.set(actor, data.principal.id);
+        if (actor === "OFFICER") departmentId = data.departmentIds[0];
         cookies.set(actor, response.headers.get("set-cookie")!.split(";")[0]);
       }
       const { rows } = await db.query("select name from sanad_private.migrations");
@@ -159,6 +162,30 @@ test("B03 live protected evidence persistence, concurrent writes and rollback", 
         assert.equal((await detail()).evidenceVersion, before.evidenceVersion);
       } finally { await db.query("drop trigger test_b03_audit_failure on public.audit_events; drop function public.test_b03_audit_failure()"); }
       assert.equal((await call(`/cases/${caseId}/evidence`, "CITIZEN_A", body, key)).status, 201);
+    });
+    await t.test("real helper submission, department sharing, withdrawal replay denial and assigned-officer expiry", async () => {
+      const target = (await (await call("/case-drafts", "CITIZEN_A", {})).json()).data.caseId;
+      const helper = (await (await call(`/cases/${target}/consents`, "CITIZEN_A", { recipientType: "PRINCIPAL", recipientId: ids.get("HELPER"), purpose: "synthetic_helper_assistance",
+        actions: ["WRITE_DRAFT", "SUBMIT_CASE", "READ_CASE"], expiresAt: new Date(Date.now() + 3600000).toISOString() })).json()).data;
+      const department = (await (await call(`/cases/${target}/consents`, "CITIZEN_A", { recipientType: "DEPARTMENT", recipientId: departmentId, purpose: "synthetic_department_review",
+        actions: ["READ_CASE", "READ_EVIDENCE", "REVIEW_CASE"], expiresAt: new Date(Date.now() + 3600000).toISOString() })).json()).data;
+      const saved = await call(`/case-drafts/${target}`, "HELPER", { expectedVersion: 1, noticeToken: null, messageText: "Synthetic helper submission", disputeText: null, relatedCaseId: null }, crypto.randomUUID(), "PATCH");
+      assert.equal(saved.status, 200);
+      const key = crypto.randomUUID();
+      const body = { caseId: target, expectedDraftVersion: 2 };
+      const submission = await call("/cases", "HELPER", body, key);
+      assert.equal(submission.status, 201);
+      assert.equal((await submission.json()).data.status, "SUBMITTED");
+      assert.equal((await call(`/consents/${helper.id}/revoke`, "CITIZEN_A", { expectedVersion: 1 })).status, 200);
+      assert.equal((await call("/cases", "HELPER", body, key)).status, 403);
+      assert.equal((await call(`/consents/${department.id}/revoke`, "CITIZEN_A", { expectedVersion: 1 })).status, 200);
+      // B04 assignment/review is fixture setup, not a claimed implemented HTTP workflow.
+      await db.query("update public.cases set assigned_officer_id=$2,assigned_department_id=$3,status='UNDER_REVIEW' where id=$1", [target, ids.get("OFFICER"), departmentId]);
+      await db.query(`insert into public.consent_grants(case_id,grantor_citizen_id,recipient_type,recipient_id,purpose,actions,created_at,expires_at)
+        values($1,$2,'DEPARTMENT',$3,'synthetic_department_review',array['READ_CASE','READ_EVIDENCE','REVIEW_CASE']::public.sanad_consent_action[],now()-interval '2 hours',now()-interval '1 hour')`, [target, ids.get("CITIZEN_A"), departmentId]);
+      assert.equal((await call(`/cases/${target}/evidence-passport`, "OFFICER")).status, 403);
+      const history = (await (await call(`/cases/${target}/history`, "CITIZEN_A")).json()).data;
+      assert.equal(history.items.filter((item: { action: string }) => item.action === "CONSENT_INTERRUPTED").at(-1).actorId, ids.get("OFFICER"));
     });
     await t.test("immutable database history and direct-client permissions", async () => {
       for (const sql of ["update public.evidence_items set content='{}' where case_id=$1", "delete from public.case_events where case_id=$1", "update public.assessments set record='{}' where case_id=$1"]) {
