@@ -1,4 +1,4 @@
-/** Spike-local JSON walk. Rejects duplicate object members before JSON.parse. */
+/** Reject duplicate object members before JSON.parse discards them. */
 
 export class JsonMemberError extends Error {
   readonly code: "DUPLICATE_MEMBER" | "MALFORMED_JSON";

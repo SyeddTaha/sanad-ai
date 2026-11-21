@@ -1,6 +1,6 @@
 import { CompactSign, compactVerify, generateKeyPair } from "jose";
 import { SignedNoticePayloadSchema, type SignedNoticePayload } from "@/contracts/v1";
-import { assertUniqueJsonMembers, JsonMemberError } from "./json-members";
+import { assertUniqueJsonMembers, JsonMemberError } from "@/lib/json-members";
 import type { TrustedIssuerRegistry } from "./registry";
 
 export const NOTICE_ALG = "Ed25519" as const;
