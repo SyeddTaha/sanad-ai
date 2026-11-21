@@ -103,8 +103,17 @@ browser against `next start` or the public production URL. A successful
 ## Current deployment gate
 
 As of 21 November 2026, this environment had no `VERCEL_TOKEN`,
-`VERCEL_ORG_ID`, or `VERCEL_PROJECT_ID`, and the Vercel CLI was not installed.
-No production project was created or updated from this task.
+`VERCEL_ORG_ID`, or `VERCEL_PROJECT_ID`. The Vercel CLI was not previously
+installed; a temporary CLI invocation confirmed that no Vercel account session
+is available (`Logged out`). No `.vercel` project link exists in this checkout.
+No production project was created or updated, and no temporary deployment was
+created.
+
+PR [#12](https://github.com/SyeddTaha/sanad-ai/pull/12) triggered GitHub Actions
+run [44915723917](https://github.com/SyeddTaha/sanad-ai/actions/runs/44915723917).
+The run completed successfully on 21 November 2026, with every CI step passing:
+install, lint, typecheck, contract tests, offline backend tests, and the
+Webpack production build.
 
 Verified locally from `next start` on port 3100:
 
@@ -113,6 +122,11 @@ Verified locally from `next start` on port 3100:
 - `/login` exposed the SANAD sign-in UI.
 - The citizen routes exposed the expected Urdu headings.
 
-There is no public deployment URL for this task. After merge, the repository
-owner connects Vercel to `main` and re-checks the eight routes on the resulting
-public URL.
+There is no public deployment URL for this task. Production deployment requires
+an authorized repository owner or project member to connect Vercel to the
+`SyeddTaha/sanad-ai` repository and sign into the approved Vercel account.
+For automated deployment or CLI deployment, the authorized account must provide
+a Vercel account token plus the approved organization and project identifiers:
+`VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`. Secrets must be
+configured in the deployment host or CI environment; they must not be placed in
+this document or committed to the repository.
