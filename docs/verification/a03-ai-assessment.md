@@ -110,10 +110,16 @@ suspected fraud, a disputed payment, and contradictory amounts.
 
 Totals: classification 6/6, extraction 6/6, routing 6/6; summed latency 20,624 ms
 (mean 3,437 ms); usage 2,675 input and 3,288 output tokens (5,963 total). The
-first Urdu evaluation exposed two extraction errors: a prose fragment was
-returned as an issuer, and a visible payment reference was missed. The
-issuer-shape validation and literal-reference extraction fix was regression
-tested; the sequential re-run above corrected both.
+first Urdu evaluation had two incorrect extraction tuples:
+
+- Suspected-fraud case: issuer was `آپ کی امداد روک دی گئی ہے۔`; expected issuer
+  was null. Classification, amount, reference, and route were correct.
+- Payment-dispute case: issuer was `PAY-UR-04` and payment reference was null;
+  expected issuer was null and reference was `PAY-UR-04`. Classification,
+  amount, and route were correct.
+
+Issuer-shape validation and literal-reference extraction were regression tested;
+the sequential re-run above corrected both cases.
 
 A combined A01-plus-Urdu live attempt hit Groq `RATE_LIMITED` during the Urdu
 dispute case. It was recorded as unavailable/manual review, then the Urdu set
