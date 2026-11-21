@@ -1,11 +1,11 @@
 # SANAD: evidence-first notice verification and disputes
 
-Status: ready-for-agent
-Contract revision: candidate-v1
-Implementation gate: not cleared for parallel development
+Status: frozen bounded contract baseline under delegated human-owner authority
+Contract revision: v1.0.0
+Implementation gate: bounded schemas/types/fixtures frozen; deferred implementation and integration gates remain pending
 Updated: 21 November 2026, Asia/Karachi
 
-This is the local-tracker specification, not a report of implemented behavior. The six architectural decisions are accepted; the concrete field names, enum refinements, route shapes, and storage projection below are a candidate translation for contract-owner review. Do not treat newly specified details as additional interview-approved decisions. The initial agent work is contract establishment and validation; feature implementation waits for the freeze gate in Further Notes. No implementation tickets or task assignments are created here.
+This is the local-tracker specification. The six architectural decisions are accepted. On 21 November 2026, the requesting human accepted ownership of shared contracts and database migrations and approved all 17 consolidated contract decisions, the exported schemas/types/fixtures as a bounded baseline, the clarifications below and explicit deferrals. The designated human backend lead and contract owner subsequently stated that the team delegates shared-contract approval to them and authorized the bounded `v1.0.0` freeze. Individual teammate signoff is no longer blocking under the ADR 0005 governance amendment; no individual developer reviews are asserted. Candidate wording below continues to apply to deferred/unexported projections. The frozen exported baseline and its scope are recorded in the approval ledger. No runtime integration, B01 or additional feature work is authorized by this record.
 
 ## Problem Statement
 
@@ -33,6 +33,63 @@ Use [the domain glossary](../../GLOSSARY.md) and these accepted decisions:
 | Immutable rules and assessments; transactional resolution | [ADR 0004](../../docs/adr/0004-versioned-assessments-and-transactional-case-resolution.md) |
 | Zod contracts, centralized mocks, and safe retries | [ADR 0005](../../docs/adr/0005-shared-contracts-and-central-mock-services.md) |
 | Urdu Audio Guidance and shared-phone isolation | [ADR 0006](../../docs/adr/0006-urdu-audio-and-shared-phone-isolation.md) |
+
+### Human-owner approval and bounded promotion
+
+Approval source: the requesting human SANAD project owner's explicit declaration
+on 21 November 2026: "I am the named human owner of shared contracts and database
+migrations." The human approved all 17 decisions in the consolidated contract
+approval request, including the bounded freeze and explicit deferrals. The exact
+decision register is the [contract approval ledger](../../src/contracts/v1/README.md#approval-ledger).
+The approved baseline is the exported schemas, inferred types and synthetic
+fixtures at `11de106cd1e4ef8ac153c8c54aed07a40bee4156`. Existing public field names,
+enums and fixture shapes are retained. This is a contract projection of the six
+ADRs, not a replacement of their authorization, evidence or human-review rules.
+
+The owner subsequently stated: "The team delegates shared contract approval to
+me. Individual teammate signoff is no longer a blocking requirement." The owner
+explicitly authorized the bounded freeze and promotion to `v1.0.0`, followed by
+fresh validation and a normal protected GitHub merge. This governance amendment
+supersedes the earlier owner-plus-affected-developer approval requirement in
+[ADR 0005](../../docs/adr/0005-shared-contracts-and-central-mock-services.md#governance-amendment--21-november-2026).
+It records delegated authority rather than fabricated individual reviews.
+
+Binding clarifications:
+
+1. Consent purposes must be validated against a server-controlled operational
+   allowlist for their disclosed use. `purpose: Reference` validates syntax only;
+   an arbitrary purpose string cannot authorize access. Runtime allowlist
+   enforcement remains pending with authorization implementation.
+2. Missing payment records and contradictory payment details remain
+   distinguishable: use `RECORD_NOT_FOUND` for absence and `DETAILS_MISMATCH` for
+   contradictory details (`RECIPIENT_MISMATCH` when specifically applicable).
+   Neither automatically establishes `FAILED`. A missing record leaves payment
+   `UNKNOWN`; a mismatched record does not prove this Citizen's payment completed.
+3. AI confidence is advisory, is not assumed to be a calibrated probability, and
+   cannot establish authoritative findings or authorize financial decisions.
+   It cannot override deterministic findings or the human Case resolution gate.
+
+Explicitly pending: full draft and endpoint contracts; mock service interfaces;
+full AI output contracts; runtime authorization and persistence; OpenAPI
+projection; crypto feasibility (Developer 2); AI provider feasibility;
+accessibility and deployment verification.
+Operational catalogs, official-PDF fidelity and live demo parameters also retain
+their recorded prerequisites. Approved fixture values are examples only.
+
+The bounded approval narrows the initial G2 freeze to the existing export
+surface. It does not assert completion of the broader G2 interfaces or direct-API
+integration requirements. No teammate approval is inferred from delegated owner
+authority, prior agent code reviews or passing schema tests. Individual reviews
+may still occur but are no longer a contract-freeze prerequisite. GitHub branch
+protections remain mandatory and may not be bypassed.
+
+`CONTRACT_REVISION` and the export-test expectation are promoted to `v1.0.0` under
+the delegated owner's explicit authorization. Run the existing 25 contract tests,
+TypeScript check, lint and production build; record actual fresh evidence in the
+approval ledger and PR #2. Mark the PR ready for review and merge into `main`
+only if checks pass and GitHub permits its normal merge path. Pull the merged
+`main` locally and verify a clean working tree. Deferred consumers remain gated,
+and B01 must not start as part of this freeze.
 
 ### Required capability coverage
 
@@ -96,11 +153,13 @@ The brief permits low-bandwidth mode as an additional feature; this limited-resi
 
 ### 1. Architecture and testable boundary
 
-Use one Next.js App Router application with server-only domain services and PostgreSQL transactions. UI requests and public REST routes use the same authorization and case-operation boundary; server components and internal mock consumers must not create alternate permission paths. Supabase supplies PostgreSQL; Supabase Auth is the candidate JWT/OAuth session provider, subject to setup verification. The existing app is a starter page with no feature APIs, auth, migrations, contract schemas, or behavior tests.
+Use one Next.js App Router application with server-only domain services and PostgreSQL transactions. UI requests and public REST routes use the same authorization and case-operation boundary; server components and internal mock consumers must not create alternate permission paths. Supabase supplies PostgreSQL; Supabase Auth is the candidate JWT/OAuth session provider, subject to setup verification. The existing app has a starter page and the exported bounded contract baseline with 25 contract tests, but no feature APIs, real auth or database migrations.
 
 Keep notice verification, assessment, consent, case operations, and the three mock interfaces as modules within the monolith. The contract owner owns migrations and shared schemas. Frontend, AI, and administrative views consume those contracts; they do not redefine them. Before implementation, read the locally installed Next.js route-handler, authentication, and data-security guides. Never place signing keys, AI credentials, database administrative credentials, or API secrets in browser bundles or logs.
 
 The primary automated seam is the authenticated v1 HTTP boundary against an isolated test database and controlled provider adapters. Browser tests add the actual Urdu and shared-device journey. Pure cryptographic mutation fixtures and controlled concurrent database operations supplement this boundary where an HTTP-only test cannot isolate the failure. These are the direct API and browser seams explicitly approved in the interview, not new approval requests.
+
+For the bounded exported baseline, the human separately approved the public v1 contract seam: schema parsing/rejection, transition shapes, synthetic fixture compatibility, API envelopes and export consistency. Its 25 tests do not replace the deferred runtime HTTP/database/browser acceptance tests.
 
 ### 2. Shared scalar and transport contracts
 
@@ -115,7 +174,7 @@ All object schemas are strict Zod definitions: reject unknown properties rather 
 | `Version` | Positive safe integer; increment on the relevant mutable record change. |
 | `MoneyMinor` | Nonnegative safe integer in minor currency units; reject floats, numeric strings, and unsafe integers. |
 | `Currency` | Candidate v1 literal `PKR` for the single synthetic program. |
-| `Confidence` | Number from 0 through 1 from a validated successful model result; otherwise null, never a fabricated default. |
+| `Confidence` | Advisory number from 0 through 1 from a validated successful model result; otherwise null, never a fabricated default. It is not assumed to be a calibrated probability and cannot establish authoritative findings or authorize financial decisions. |
 | `Language` | `ur` or `en`; Urdu is the primary audio language. |
 
 Candidate request limits: 64 KiB JSON body, 16,384 characters of message text, 8,192 characters of compact JWS, and 2,000 characters for a dispute or resolution reason. References and identifiers have their own limits. The owner verifies these limits accommodate all signed fixtures before freezing them. Version one accepts text and QR-carried tokens, not arbitrary attachment uploads or general OCR.
@@ -173,11 +232,11 @@ Every finding includes `result`, `reasonCodes`, `sourceRefs`, and `observedAt`. 
 | `payment` | `SETTLED`, `PENDING`, `FAILED`, `UNKNOWN` |
 | `eligibility` | `ELIGIBLE`, `INELIGIBLE`, `UNKNOWN` |
 
-Candidate reason codes include `SIGNATURE_VALID`, `SIGNATURE_INVALID`, `TOKEN_MISSING`, `UNKNOWN_ISSUER`, `UNKNOWN_KEY`, `UNSUPPORTED_VERSION`, `REGISTRY_UNAVAILABLE`, `NOTICE_EXPIRED`, `NOTICE_REVOKED`, `RECORD_NOT_FOUND`, `SOURCE_UNAVAILABLE`, `RECIPIENT_AMBIGUOUS`, `RECIPIENT_MISMATCH`, `DETAILS_MISMATCH`, `ELIGIBILITY_INPUT_MISSING`, and `RULE_THRESHOLD_EXCEEDED`. The owner freezes a complete finite list with corresponding Urdu/English explanation keys; arbitrary model-produced strings cannot become authoritative reason codes.
+The owner-approved baseline reason codes are `SIGNATURE_VALID`, `SIGNATURE_INVALID`, `TOKEN_MISSING`, `UNKNOWN_ISSUER`, `UNKNOWN_KEY`, `UNSUPPORTED_VERSION`, `REGISTRY_UNAVAILABLE`, `NOTICE_EXPIRED`, `NOTICE_REVOKED`, `RECORD_NOT_FOUND`, `SOURCE_UNAVAILABLE`, `RECIPIENT_AMBIGUOUS`, `RECIPIENT_MISMATCH`, `DETAILS_MISMATCH`, `ELIGIBILITY_INPUT_MISSING`, and `RULE_THRESHOLD_EXCEEDED`. The sixteen identifiers are approved within the bounded baseline; corresponding operational Urdu/English explanation-key catalogs remain pending. Arbitrary model-produced strings cannot become authoritative reason codes.
 
 An Evidence Passport response contains `caseId`, `assessmentId`, `assessedAt`, `evidenceVersion`, `ruleVersionId`, the six named findings, `contradictions`, `missingEvidence`, and `ai`. Contradictions contain the affected fields and scoped source references, not an LLM verdict of legal fraud. The response's `caseStatus` is independently nullable before submission; never infer it from a finding. Authorized history returns immutable prior Assessments separately. The UI and audio have no single combined `verified`, `safe`, or `approved` field or badge.
 
-A found mock payment records its own settlement state. If reference, recipient, amount, currency, or program does not match, record the contradiction and do not describe that record as this Citizen's completed payment. An absent record means payment `UNKNOWN`, not `FAILED`. Eligibility is `UNKNOWN` when required inputs are absent or identity is ambiguous; only complete deterministic rule evaluation may produce `ELIGIBLE` or `INELIGIBLE`, and neither authorizes payment.
+A found mock payment records its own settlement state. If reference, recipient, amount, currency, or program does not match, record the contradiction with `DETAILS_MISMATCH` (and `RECIPIENT_MISMATCH` when specifically applicable) and do not describe that record as this Citizen's completed payment. An absent record uses `RECORD_NOT_FOUND` and means payment `UNKNOWN`, not `FAILED`. Missing and contradictory payment evidence remain distinguishable through reason codes; neither automatically establishes a `FAILED` payment. Eligibility is `UNKNOWN` when required inputs are absent or identity is ambiguous; only complete deterministic rule evaluation may produce `ELIGIBLE` or `INELIGIBLE`, and neither authorizes payment.
 
 ### 5. Core logical records and ownership
 
@@ -198,7 +257,7 @@ These are logical schemas and constraints for migrations, not SQL implementation
 | API key | `id`, `principalId`, secret hash, `scopes`, `expiresAt`, nullable `revokedAt`, `createdAt`; never store or log plaintext keys. |
 | Idempotency record | Principal, operation, key, canonical validated request digest, completion state, result reference, and creation time; unique per principal/operation/key. |
 
-Candidate consent `recipientType` values are `PRINCIPAL`, `DEPARTMENT`, and `AI_PROCESSOR`; a helper or service principal uses `PRINCIPAL`. Candidate action values are `READ_CASE`, `READ_EVIDENCE`, `WRITE_DRAFT`, `ADD_EVIDENCE`, `SUBMIT_CASE`, `REQUEST_ASSESSMENT`, `REVIEW_CASE`, `RESOLVE_CASE`, `CLOSE_CASE`, and `PROCESS_AI`. The authorization module intersects grant actions with the recipient's role and case assignment; a Citizen cannot grant a Helper resolution powers simply by inserting an action value. Consent purposes are explicit disclosed identifiers with audio/visual explanations, not arbitrary hidden text. The owner freezes exact purpose identifiers and demo expiry values before implementation.
+The approved bounded baseline uses consent `recipientType` values `PRINCIPAL`, `DEPARTMENT`, and `AI_PROCESSOR`; a helper or service principal uses `PRINCIPAL`. Action values include `READ_CASE`, `READ_EVIDENCE`, `WRITE_DRAFT`, `ADD_EVIDENCE`, `SUBMIT_CASE`, `REQUEST_ASSESSMENT`, `REVIEW_CASE`, `RESOLVE_CASE`, `CLOSE_CASE`, and `PROCESS_AI`, plus the dispatch actions described in §6. The future authorization module intersects grant actions with the recipient's role and case assignment; a Citizen cannot grant a Helper resolution powers simply by inserting an action value. Consent purposes are explicit disclosed identifiers with audio/visual explanations. They must be validated against a server-controlled operational allowlist; arbitrary purpose strings cannot authorize access even when they pass the structural `Reference` schema. The existing helper/department purposes and expiry are approved as fixture examples only; operational allowlists, disclosures and lifetime policy remain pending before their workflows are implemented.
 
 Candidate role codes are `CITIZEN`, `HELPER`, `OFFICER`, `ADMIN`, and `AUDITOR`, mapped to the glossary terms. IDs in records are `Id`, source/business references are `Reference`, API record times are `Timestamp`, and revision counters are `Version`; nullable fields accept an explicit null, not omitted alternative shapes. Drafts start at version/evidenceVersion 1. Changing notice/message/dispute content increments both draft and evidence versions; submission carries the evidence version into the Case. Case assignment/status changes increment Case version but do not change evidenceVersion.
 
@@ -206,7 +265,7 @@ The external evidence-write `kind` is `NOTICE_INPUT`, `CITIZEN_STATEMENT`, or `C
 
 An optional `relatedCaseId` links a new dispute to an authorized prior Case belonging to the same Citizen; the server validates the link and carries it from draft to submitted Case. Finalized Case content is not edited to introduce a new dispute: corrections after closure use a linked Case and preserve the original history. A shopkeeper may inspect signed provenance without gaining the referenced beneficiary's identity/payment records; notice possession does not change this ownership boundary.
 
-The draft reserve is a candidate bootstrap for case-specific consent: an authenticated Citizen reserves an owner-bound `caseId` before helper sharing, so a helper never needs blanket access to create their own authorization. Server saving is optional until connectivity returns; an in-memory draft has no persisted-success claim. The reserved owner record survives submission, while its mutable draft content is promoted to protected evidence and cleared or referenced rather than becoming a second historical evidence store. Submission atomically creates the Case at the same `caseId`; no `DRAFT` value is added to the approved Case enum. This bootstrap and its migration representation require explicit owner review at the freeze gate.
+The human-owner-approved bootstrap behavior for case-specific consent is that an authenticated Citizen reserves an owner-bound `caseId` before helper sharing, so a helper never needs blanket access to create their own authorization. Server saving is optional until connectivity returns; an in-memory draft has no persisted-success claim. The reserved owner record survives submission, while its mutable draft content is promoted to protected evidence and cleared or referenced rather than becoming a second historical evidence store. Submission atomically creates the Case at the same `caseId`; no `DRAFT` value is added to the approved Case enum. Full draft contracts, migration representation and runtime bootstrap/handoff implementation remain deferred. Contract approval uses the designated owner's delegated authority.
 
 Source-record corrections and new evidence increment `evidenceVersion` or change the source-version manifest, invalidating resolution freshness. A correction never silently edits authoritative identity/payment records; Citizen-supplied corrections are evidence until the responsible synthetic service publishes a new source version. Signed Notices, prior Assessments, published rules, and audit events cannot be edited in place.
 
@@ -226,7 +285,7 @@ Direct Citizen access to their own data is owner-authorized, not delegated conse
 | Service principal | Only explicitly authorized operations within key scopes and its role. | Every case operation also requires owner/delegation authority, active consent, and assignment when applicable. Cannot impersonate Citizen confirmation. |
 | AI processor | Process only scoped inputs for the disclosed AI purpose. | Explicit active processor grant plus authorized initiating operation; no role-management, signing, evidence-write, or case-resolution tools. |
 
-Candidate departmental grant actions additionally include `ASSIGN_CASE` and `ESCALATE_CASE`. An Admin may dispatch using `ASSIGN_CASE` and minimal metadata without gaining `READ_EVIDENCE`; a currently assigned Officer may escalate within the authorized department using `ESCALATE_CASE`. The owner must freeze this dispatch projection with the role/action matrix so there is an authorized path to initial assignment without opening unassigned evidence to every Officer.
+The human-owner-approved departmental action vocabulary additionally includes `ASSIGN_CASE` and `ESCALATE_CASE`. An Admin may dispatch using `ASSIGN_CASE` and minimal metadata without gaining `READ_EVIDENCE`; a currently assigned Officer may escalate within the authorized department using `ESCALATE_CASE`. The exact dispatch DTO/permission matrix and enforcement remain deferred prerequisites for an authorized path to initial assignment; unassigned evidence must not be opened to every Officer.
 
 Helper and department grants have different identifiers and revocation lifecycles. AI processing is separately disclosed and authorized; absence of AI consent leaves the deterministic/manual workflow usable. Reassignment does not expand a department grant to another department. Grant changes and expirations invalidate delegated access immediately; an expiration uses server time, not a client's clock. An administrative role change or assignment change likewise invalidates stale permissions.
 
@@ -250,7 +309,7 @@ The Case enum is exactly `SUBMITTED`, `UNDER_REVIEW`, `NEEDS_EVIDENCE`, `PENDING
 
 No generic endpoint accepts an arbitrary new status. All other transitions fail with `INVALID_TRANSITION`; Admin and AI roles do not bypass this list. Assignment changes record previous/new assignment and increment the Case version without fabricating evidence changes. Escalation records an event and priority/assignment update within existing departmental authority; it is not a new Case status. The candidate initial priority enum is `NORMAL` or `HIGH`, derived from published routing parameters and auditable escalation.
 
-When consent expires, denial is immediate even if no worker has updated the displayed status. Authorized case evaluation reconciles active workflow status to `PENDING_CONSENT` and appends the interruption event once. Restoration returns it to `SUBMITTED`. Do not add an unneeded background workflow engine. Finalized `RESOLVED`/`CLOSED` history is not rewritten or reopened by withdrawal; subsequent officer access remains denied, and a close operation requires restored authorization. This terminal-state interpretation is a contract-freeze review item rather than a seventh interview decision.
+When consent expires, denial is immediate even if no worker has updated the displayed status. Authorized case evaluation reconciles active workflow status to `PENDING_CONSENT` and appends the interruption event once. Restoration returns it to `SUBMITTED`. Do not add an unneeded background workflow engine. Finalized `RESOLVED`/`CLOSED` history is not rewritten or reopened by withdrawal; subsequent officer access remains denied, and a close operation requires restored authorization. The human owner approved this terminal-state interpretation within the bounded baseline on 21 November 2026; runtime enforcement remains deferred and no seventh ADR is introduced.
 
 Resolution runs a fresh deterministic assessment of the current evidence and sources under the current published rules. Reuse a prior successful AI run only as a referenced advisory result whose input manifest still matches; a fresh deterministic assessment does not falsely claim a new AI call. Invalid signature or conflicting evidence can be the subject of a reasoned dispute resolution, but cannot become payment approval or rewritten facts.
 
@@ -262,7 +321,7 @@ A version comparison outside a transaction or a plain snapshot read without a co
 
 Candidate v1 parameters are `maxMonthlyIncomeMinor` (`MoneyMinor`), `minRoutingConfidence` (a number from 0 through 1), and `integrityFailurePriority` (`NORMAL` or `HIGH`). These are structured data, not executable JavaScript, SQL, or model instructions. An Admin edits an unpublished candidate, validates it, and publishes a new immutable Rule Version while atomically changing the program's current-rule pointer. New Assessments use that pointer immediately without redeployment; previous Assessments keep their original rules.
 
-The candidate synthetic eligibility rule requires an unambiguous scoped recipient, an active program-enrollment record, and a known `monthlyIncomeMinor` at or below `maxMonthlyIncomeMinor`. Inactive enrollment or a known amount exceeding the threshold can produce `INELIGIBLE`; missing/ambiguous required inputs produce `UNKNOWN`. These are prototype rule findings, not real-world eligibility or financial approvals. Exact parameter names and seeded business values are proposals for owner review; no production threshold or empirical AI-confidence calibration was approved in the interview.
+The candidate synthetic eligibility rule requires an unambiguous scoped recipient, an active program-enrollment record, and a known `monthlyIncomeMinor` at or below `maxMonthlyIncomeMinor`. Inactive enrollment or a known amount exceeding the threshold can produce `INELIGIBLE`; missing/ambiguous required inputs produce `UNKNOWN`. These are prototype rule findings, not real-world eligibility or financial approvals. Current exported parameter names are human-owner-approved; existing seeded values are approved only as illustrative fixtures. Operational thresholds and calibrated confidence claims remain unapproved.
 
 The confidence parameter only controls a recommendation to ask for evidence or seek Officer review. Unknown/low confidence, contradictions, missing required evidence, and invalid AI output cannot auto-resolve a Case. Rule editing cannot disable signature validation, consent, role checks, mandatory human resolution, or the independent-finding model. The initial seed must include at least one actual deterministic eligibility rule so the live change demonstration is not merely a cosmetic routing change.
 
@@ -293,7 +352,7 @@ AI input contains an authorized `caseId`, untrusted message text, allowed fact i
 | `schemaVersion` | Literal `1`. |
 | `extractedClaims` | Nullable claimed issuer/name, payment reference, amount, currency, and issue text, each with an input span where present; claims are not verified facts. No signed-token field. |
 | `classification` | `SUSPICIOUS_MESSAGE`, `PAYMENT_DISPUTE`, `CLARIFICATION`, or `UNKNOWN`; a suggestion, not fraud proof. |
-| `confidence` | `Confidence`; reported score is not an empirical probability of payment safety. |
+| `confidence` | Advisory `Confidence`; not assumed to be a calibrated probability. It cannot establish authoritative findings or authorize financial decisions. |
 | `recommendedRoute` | `ASK_FOR_EVIDENCE`, `OFFICER_REVIEW`, or `INFORMATION_ONLY`; never an approved/rejected/paid state. |
 | `explanationPlan` | Ordered allowed fact identifiers and predefined explanation keys; every reference must exist in this Assessment's authorized inputs. |
 
@@ -392,7 +451,7 @@ The primary journey has small guided steps with large touch targets, labeled ico
 
 Record fixed prompts and finite status/reason phrases as public prerecorded assets with tested Urdu content. Case-specific narration is a deterministic plan over validated authoritative fields; it cannot promote a model claim or unsigned message into payment/eligibility truth. A dynamic TTS adapter is optional only when a tested prerecorded/structured plan covers all required states and values without relying on reading. An audio failure has a spoken fallback on a working alternate asset/path or consensual helper assistance; text-only fallback does not satisfy the no-reading acceptance test. Record an accessibility failure if every tested audible path fails rather than claiming success.
 
-Before sharing, show and narrate the named recipient, purpose, actions, and expiry. All sharing controls start unselected. The Citizen confirms under their own authenticated identity, separate from the helper context. The prototype may use separate seeded Citizen accounts and a deliberate reauthentication step; helper-controlled family selection or a self-asserted PIN without verified server identity is not confirmation. Do not accept a helper/service-principal request as Citizen consent. A step-up/session handoff mechanism must be verified at the freeze gate.
+Before sharing, show and narrate the named recipient, purpose, actions, and expiry. All sharing controls start unselected. The Citizen confirms under their own authenticated identity, separate from the helper context. The prototype may use separate seeded Citizen accounts and a deliberate reauthentication step; helper-controlled family selection or a self-asserted PIN without verified server identity is not confirmation. Do not accept a helper/service-principal request as Citizen consent. A step-up/session handoff mechanism must be verified before that workflow is integrated; it remains deferred by the bounded baseline approval.
 
 | Draft UI state | Meaning and permitted claim |
 | --- | --- |
@@ -407,7 +466,7 @@ Switching Citizens increments an in-memory UI context generation, aborts pending
 
 ### 15. Contract evolution and readiness
 
-The owner freezes the candidate contracts by reviewing actual shared Zod schemas, representative fixtures, OpenAPI projection, permission matrix, and the first direct-API contract tests. Changes thereafter require explicit owner and affected-developer approval, one coordinated contract revision, corresponding fixture/test updates, and integration evidence. Versioned `/api/v1` does not license silent incompatible changes within v1.
+The designated human owner, exercising the team's delegated shared-contract approval authority, authorized the bounded `v1.0.0` freeze of existing exported Zod schemas, inferred types and representative synthetic fixtures. Individual teammate signoff is no longer blocking; no individual reviews are asserted. Fresh 25-test/typecheck/lint/build evidence and GitHub's normal protections remain merge criteria. The broader OpenAPI projection, permission/dispatch matrix, full draft/mock/AI interfaces and first direct-API integration tests remain deferred prerequisites for their consumers; the bounded freeze does not mark them complete. Changes to approved/frozen shared contracts require the delegated owner's explicit approval, one coordinated contract revision, corresponding fixture/test updates, and applicable integration evidence. Versioned `/api/v1` does not license silent incompatible changes within v1.
 
 Named ownership and dependency order must be established before agents edit shared schemas, migrations, auth, or common dependencies. This spec assigns no person who was not named by the team. It creates no implementation tasks and grants no agent permission to work outside an assigned branch or module. Integration remains one application and one deployed vertical slice; a separate microservice, gateway, or contract registry is unnecessary.
 
@@ -520,27 +579,27 @@ For live AI evaluation, record fixture IDs, expected behavior, actual failures, 
 - Full offline-first persistence/synchronization, private evidence cached on shared phones, and retroactive recall of already viewed/downloaded data.
 - Advanced speech recognition, arbitrary document OCR/uploads, autonomous agent frameworks, RAG, a Digital Twin, a Scam Map, billing, and multi-tenant provisioning before the required slice works.
 - Production compliance/certification, a production retention/key-rotation program, empirical ROI, pricing, and customer validation.
-- Implementation code, generated schemas/OpenAPI, dependency installation, migrations, task decomposition, and deployment during this documentation task. Those follow the contract freeze process.
+- Runtime feature implementation, generated endpoint OpenAPI, database migrations, unrelated task decomposition and deployment during this bounded contract approval-recording task. Existing exported schemas/types/fixtures and their contract-test evidence are already established; remaining integrations retain their gates.
 
 ## Further Notes
 
 ### Freeze gate and unresolved blockers
 
-The six interview decisions are settled. The following facts or contract projections remain unresolved; they are recorded rather than invented or turned into another interview round.
+The six interview decisions remain settled, with ADR 0005's shared-contract governance explicitly amended on 21 November 2026. The human owner approved all 17 bounded contract decisions, the three clarifications and the bounded `v1.0.0` freeze under delegated authority. The following statuses distinguish contract freeze from operational integration evidence.
 
 | Gate | Required concrete evidence before dependent work | Current status |
 | --- | --- | --- |
-| G1: named owner | One named human accepts shared-schema/migration ownership; affected developers review the initial contracts. | Not named. |
-| G2: contract freeze | Review and establish actual Zod schemas, field/enums/error examples, grant/dispatch matrix, draft-to-case bootstrap, terminal consent handling, and OpenAPI projection; initial contract tests pass. | Candidate prose only; no schemas/tests implemented. Parallel feature development waits for this gate. |
-| G3: exact crypto compatibility | Chosen JOSE library supports protected `alg: Ed25519`; run original/mutation/unknown-key fixtures without substituting `EdDSA`. | Library not selected or tested. Blocks Signed Notice implementation claims. |
+| G1: named owner and delegated authority | Designated human accepts shared-schema/migration ownership and exercises delegated shared-contract approval authority. | Owner explicitly accepted ownership, all 17 decisions and bounded freeze. Individual teammate signoff is no longer blocking under the ADR 0005 amendment; no individual reviews are asserted. |
+| G2: bounded freeze and deferred interfaces | For current exports: delegated owner authorization, `v1.0.0` and fresh 25-test/typecheck/lint/build evidence before normal protected merge. Broader draft/endpoint/mock/AI contracts, grant/dispatch matrix, bootstrap implementation, OpenAPI projection and direct-API integration evidence remain separate gates. | Baseline shapes/fixtures from `11de106` retained and promoted to `v1.0.0`; fresh 25/25 contract tests, typecheck, lint and production build all passed on 21 November 2026, as recorded in the approval ledger and PR. Normal GitHub merge protections still apply. No unqualified G2 or integration clearance is claimed. |
+| G3: exact crypto compatibility | Chosen JOSE library supports protected `alg: Ed25519`; run original/mutation/unknown-key fixtures without substituting `EdDSA`. | Pending Developer 2's feasibility work. Blocks Signed Notice implementation claims. |
 | G4: authoritative source | Supply/verify the requested official PDF or confirm the Markdown is its faithful complete extraction. | PDF absent; provisional-source limitation remains. |
 | G5: configured services | Verify Supabase/auth/database setup, real AI provider/model/quotas and server credentials, deployment access; document names of required variables without values. | Not established by this session. Blocks dependent integrations and live claims, not contract drafting. |
-| G6: demo parameters and narration | Owner reviews seeded eligibility/routing values and synthetic cost assumptions; test Urdu scripts, dynamic/fallback coverage, and Citizen-authenticated consent handoff. | Numeric values, providers, recordings, and usability evidence not selected or tested. |
+| G6: demo parameters and narration | Owner reviews operational eligibility/routing values and synthetic cost assumptions; test Urdu scripts, dynamic/fallback coverage, and Citizen-authenticated consent handoff. | Existing fixture values approved as illustrative examples only. Operational policies, providers, recordings, handoff and accessibility evidence remain pending. |
 
-An authenticated Citizen draft with reserved Case ID, protected trace versus audit-log separation, minimal administrative dispatch, exact scalar limits, and terminal consent semantics are concrete candidate details for G2 review. They translate existing decisions but are not silently promoted to new accepted ADRs. The specification can be reviewed and the single-owner contract-establishment work can proceed; parallel feature agents must not start until the shared contracts are established and validated. A compatibility failure must be surfaced and resolved explicitly, never hidden behind an algorithm substitution or canned AI.
+The human owner approved the bounded contract choices for reserved Case IDs, minimal administrative dispatch, scalar limits and terminal consent handling without authorizing their runtime implementation here. These choices project the existing ADRs with ADR 0005's delegated-governance amendment. Full draft/endpoint contracts, mock interfaces, full AI output contracts, runtime authorization/persistence, OpenAPI, crypto/AI-provider feasibility and accessibility/deployment verification remain explicitly pending. Individual teammate signoff is no longer blocking; that is not a claim of individual approval. The freeze does not waive implementation gates or authorize B01 or another backend feature. Surface compatibility failures explicitly; never hide them behind algorithm substitution or canned AI.
 
 The source document names in the original engineering source-of-truth list differ from actual available brief filenames. This spec links to the actual files and records the missing-PDF limitation without modifying engineering instructions. The root specification entry links here so agents can find the local-tracker spec without maintaining duplicate contract text.
 
 ### Planning completion and evidence status
 
-All six approved decisions are recorded in the glossary/ADRs. This specification and its acceptance references synthesize them; no seventh architecture decision, human owner, implemented feature, executed acceptance test, live provider success, or deployment is asserted. Documentation verification covers whitespace, local links, and required section/decision references only. Do not turn `Status: ready-for-agent` into permission to bypass the freeze gate: it is the tracker label requested by the spec skill, and the next agent action is the bounded contract-establishment step after named ownership.
+All six approved architectural decisions remain recorded in the glossary/ADRs, with ADR 0005's governance amendment explicitly recorded. The delegated human owner authorized the bounded `v1.0.0` freeze. Promotion changes the revision, its existing assertion and related documentation/comments only; it does not redesign schemas, alter synthetic fixtures or add runtime behavior. Fresh test/typecheck/lint/build results belong in the approval ledger and PR before normal protected merge. No individual developer reviews, live provider success, implemented security enforcement, verified accessibility or deployment are asserted. B01 remains unstarted.
