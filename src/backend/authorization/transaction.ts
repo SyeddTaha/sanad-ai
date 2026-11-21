@@ -54,10 +54,14 @@ export async function inAuthorizationTransaction<T>(request: NextRequest, reques
 }
 
 export async function lockTarget(tx: Transaction, caseId: string) {
-  const { rows } = await tx.db.query("select id,citizen_id,created_at from public.case_reservations where id=$1 for update", [caseId]);
+  const rows=await lockTargets(tx,[caseId]);
   // Deliberately identical for a foreign or nonexistent owner-bound target.
   if (!rows[0]) throw new AuthFailure("FORBIDDEN");
   return rows[0];
+}
+export async function lockTargets(tx:Transaction,caseIds:string[]) {
+  const {rows}=await tx.db.query("select id,citizen_id,created_at from public.case_reservations where id=any($1::uuid[]) order by id for update",[caseIds]);
+  return rows;
 }
 export function requireCitizen(tx: Transaction, owner?: unknown) {
   if (tx.identity.principal.kind !== "HUMAN" || !tx.identity.principal.roles.includes("CITIZEN") ||

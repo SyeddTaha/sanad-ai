@@ -4,6 +4,8 @@ import { AuthFailure } from "@/backend/auth/principal";
 import type { Transaction } from "@/backend/authorization/transaction";
 import { draftSnapshot } from "./drafts";
 import { evidenceRecord } from "./evidence";
+import { currentRule } from "@/backend/rules/service";
+import { evaluateEligibility,programInput } from "@/backend/rules/eligibility";
 
 // Owner-approved opaque unavailable basis. This is not a published eligibility policy.
 export const UNAVAILABLE_RULE_BASIS_ID = "b3000000-0000-4000-8000-000000000001";
@@ -24,6 +26,8 @@ export async function passportRecord(tx: Transaction, caseId: string, assessment
 
 /** No provider substitutes or client findings: absent adapters remain explicitly unknown. */
 export async function createAssessment(tx: Transaction, caseId: string, expectedEvidenceVersion: number, aiAuthorized: boolean) {
+  const rule = await currentRule(tx);
+  const program = await programInput(tx,caseId);
   const { rows: [basis] } = await tx.db.query("select availability from public.assessment_rule_bases where id=$1", [UNAVAILABLE_RULE_BASIS_ID]);
   if (basis?.availability !== "UNAVAILABLE") throw new AuthFailure("SERVICE_UNAVAILABLE");
   const snapshot = await draftSnapshot(tx, caseId);
@@ -41,20 +45,24 @@ export async function createAssessment(tx: Transaction, caseId: string, expected
     const item = await evidenceRecord(tx, caseId, id);
     if (item.kind === "NOTICE_INPUT" && "noticeToken" in item.content && item.content.noticeToken !== null) hasToken = true;
   }
-  const source = (service: string): SourceReference => ({ service, recordRef: null, sourceVersion: null, observedAt: assessedAt });
+  const source = (service: string): SourceReference => service === "mock_program_data" && program
+    ? {service,recordRef:program.id,sourceVersion:program.version,observedAt:assessedAt}
+    : {service,recordRef:null,sourceVersion:null,observedAt:assessedAt};
   const finding = <T extends string>(result: T, service: string, reasonCodes: FindingReasonCode[] = ["SOURCE_UNAVAILABLE"]) => ({ result, reasonCodes, sourceRefs: [source(service)], observedAt: assessedAt });
   const findings = {
     signature: finding("NOT_VERIFIED", "trusted_issuer_registry", [hasToken ? "REGISTRY_UNAVAILABLE" : "TOKEN_MISSING"]),
     expiry: finding("UNKNOWN", "crypto_notice"), revocation: finding("UNKNOWN", "notice_revocations"),
-    recipientMatch: finding("UNKNOWN", "mock_identity"), payment: finding("UNKNOWN", "mock_payment"), eligibility: finding("UNKNOWN", "mock_program_data"),
+    recipientMatch: program ? finding(program.recipientMatch,"mock_program_data",program.recipientMatch==="AMBIGUOUS" ? ["RECIPIENT_AMBIGUOUS"] : program.recipientMatch==="UNKNOWN" ? ["SOURCE_UNAVAILABLE"] : []) : finding("UNKNOWN", "mock_identity"),
+    payment: finding("UNKNOWN", "mock_payment"), eligibility: rule ? {...finding("UNKNOWN","mock_program_data"),...evaluateEligibility(program,rule.parameters)} : finding("UNKNOWN", "mock_program_data"),
   };
   const ai = { status: aiAuthorized ? "UNAVAILABLE" : "NOT_AUTHORIZED", runId: null, modelVersion: null, promptVersion: null,
     outputSchemaVersion: null, confidence: null, classification: null, recommendedRoute: null, explanationRefs: [], failureCode: aiAuthorized ? "provider_not_configured" : null };
   const assessment = AssessmentSchema.parse({ id: crypto.randomUUID(), caseId, assessedAt, evidenceVersion,
-    ruleVersionId: UNAVAILABLE_RULE_BASIS_ID, evidenceRefs, findings, sourceVersions: [
+    ruleVersionId: rule?.id ?? UNAVAILABLE_RULE_BASIS_ID, evidenceRefs, findings, sourceVersions: [
       ...Object.values(findings).flatMap((item) => item.sourceRefs),
-      { service: "rule_basis", recordRef: UNAVAILABLE_RULE_BASIS_ID, sourceVersion: 1, observedAt: assessedAt },
-    ], contradictions: [], missingEvidence: ["crypto_verification", "identity_source", "payment_source", "program_source", "rule_basis_unavailable", "contradiction_checks_unavailable", ...(!hasToken ? ["notice_token"] : [])], ai, aiRunIds: [] });
+      { service: rule ? "published_rule" : "rule_basis", recordRef: rule?.id ?? UNAVAILABLE_RULE_BASIS_ID, sourceVersion: rule?.version ?? 1, observedAt: assessedAt },
+    ], contradictions: [], missingEvidence: ["crypto_verification", ...(!program || program.recipientMatch!=="MATCH" ? ["identity_source"] : []), "payment_source",
+      ...(!program || program.enrollment==="UNKNOWN" || program.monthlyIncomeMinor===null ? ["program_source"] : []), ...(!rule ? ["rule_basis_unavailable"] : []), "contradiction_checks_unavailable", ...(!hasToken ? ["notice_token"] : [])], ai, aiRunIds: [] });
   await tx.db.query("insert into public.assessments(id,case_id,evidence_version,rule_version_id,assessed_at,record) values($1,$2,$3,$4,$5,$6)",
     [assessment.id, caseId, evidenceVersion, assessment.ruleVersionId, assessedAt, assessment]);
   for (const id of evidenceRefs) await tx.db.query("insert into public.assessment_evidence values($1,$2,$3)", [assessment.id, caseId, id]);
