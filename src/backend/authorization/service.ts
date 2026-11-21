@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { ConsentGrantSchema, IdSchema, type ConsentAction } from "@/contracts/v1";
 import { AuthFailure } from "@/backend/auth/principal";
 import { authorize, type Decision, type Permission, type PolicyContext } from "./policy";
-import { audit, inAuthorizationTransaction, lockTarget, type Dependencies, type Transaction } from "./transaction";
+import { audit, inAuthorizationTransaction, lockTargets, type Dependencies, type Transaction } from "./transaction";
 
 export function consentRecord(row: Record<string, unknown>) {
   return ConsentGrantSchema.parse({ id: row.id, caseId: row.case_id, grantorCitizenId: row.grantor_citizen_id,
@@ -12,26 +12,42 @@ export function consentRecord(row: Record<string, unknown>) {
     revokedAt: row.revoked_at === null ? null : new Date(row.revoked_at as string).toISOString(), version: row.version });
 }
 export async function loadAuthorization(tx: Transaction, caseId: string): Promise<PolicyContext> {
-  const reservation = await lockTarget(tx, caseId);
-  const { rows: [record] } = await tx.db.query("select assigned_officer_id,assigned_department_id from public.cases where id=$1", [caseId]);
-  const { rows } = await tx.db.query("select *,to_json(actions) as actions from public.consent_grants where case_id=$1 order by id", [caseId]);
+  const [snapshot]=await loadCaseAuthorizations(tx,[caseId]);
+  if (!snapshot) throw new AuthFailure("FORBIDDEN");
+  return snapshot.context;
+}
+
+/** One bounded batch, with the same locks and policy inputs as individual requests. */
+export async function loadCaseAuthorizations(tx:Transaction,caseIds:string[]) {
+  const reservations=await lockTargets(tx,caseIds);
+  const {rows:cases}=await tx.db.query("select * from public.cases where id=any($1::uuid[])",[caseIds]);
+  const {rows}=await tx.db.query("select *,to_json(actions) as actions from public.consent_grants where case_id=any($1::uuid[]) order by id",[caseIds]);
   const { rows: [clock] } = await tx.db.query("select clock_timestamp() as time");
-  return { ...tx.identity, target: { caseId, citizenId: String(reservation.citizen_id), assignedOfficerId: record?.assigned_officer_id as string ?? null },
-    assignedDepartmentId: record?.assigned_department_id as string ?? null,
-    apiKeyScopes: null, grants: rows.map(consentRecord), evaluatedAt: new Date(clock.time as string).toISOString() };
+  const records=new Map(cases.map(record=>[String(record.id),record]));
+  const grants=rows.map(consentRecord);
+  return reservations.map(reservation=>{
+    const caseId=String(reservation.id);
+    const record=records.get(caseId);
+    const context:PolicyContext={...tx.identity,target:{caseId,citizenId:String(reservation.citizen_id),assignedOfficerId:record?.assigned_officer_id as string ?? null},
+      assignedDepartmentId:record?.assigned_department_id as string ?? null,apiKeyScopes:null,
+      grants:grants.filter(grant=>grant.caseId===caseId),evaluatedAt:new Date(clock.time as string).toISOString()};
+    return {context,record};
+  });
 }
 
 /** Lazy expiry reconciliation; the reservation is already locked by loadAuthorization. */
+export function hasDepartmentSharing(context:PolicyContext) {
+  return context.grants.some((grant)=>grant.caseId===context.target.caseId && grant.grantorCitizenId===context.target.citizenId &&
+    grant.recipientType==="DEPARTMENT" && grant.purpose==="synthetic_department_review" && grant.revokedAt===null &&
+    Date.parse(grant.createdAt)<=Date.parse(context.evaluatedAt) && Date.parse(grant.expiresAt)>Date.parse(context.evaluatedAt) &&
+    ["READ_CASE","READ_EVIDENCE","REVIEW_CASE"].every((action)=>grant.actions.includes(action as ConsentAction)) &&
+    (!context.assignedDepartmentId || grant.recipientId===context.assignedDepartmentId));
+}
 export async function reconcileConsentStatus(tx: Transaction, caseId: string) {
-  const { rows: [record] } = await tx.db.query(`select c.status,exists(
-    select 1 from public.consent_grants g join public.departments d on d.id=g.recipient_id
-    where g.case_id=c.id and g.grantor_citizen_id=c.citizen_id and g.recipient_type='DEPARTMENT'
-      and g.purpose='synthetic_department_review' and g.revoked_at is null and g.expires_at>clock_timestamp()
-      and g.actions @> array['READ_CASE','READ_EVIDENCE','REVIEW_CASE']::public.sanad_consent_action[]
-      and (c.assigned_department_id is null or g.recipient_id=c.assigned_department_id)
-    ) as active from public.cases c where c.id=$1`, [caseId]);
+  const { rows: [record] } = await tx.db.query("select status from public.cases where id=$1",[caseId]);
   if (!record || ["RESOLVED", "CLOSED"].includes(String(record.status))) return;
-  const status = record.active ? (record.status === "PENDING_CONSENT" ? "SUBMITTED" : record.status) : "PENDING_CONSENT";
+  const active=hasDepartmentSharing(await loadAuthorization(tx,caseId));
+  const status = active ? (record.status === "PENDING_CONSENT" ? "SUBMITTED" : record.status) : "PENDING_CONSENT";
   if (status === record.status) return;
   await tx.db.query("update public.cases set status=$2 where id=$1", [caseId, status]);
   await audit(tx, status === "PENDING_CONSENT" ? "CONSENT_INTERRUPTED" : "CONSENT_RESTORED", "ALLOWED", caseId);

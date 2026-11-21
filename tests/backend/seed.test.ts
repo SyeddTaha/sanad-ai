@@ -39,6 +39,8 @@ test("synthetic setup provisions every role and two citizens without duplicating
       "20261121000300_rbac_consent.sql", "20261121000400_case_evidence.sql",
       "20261121000500_case_operation_keys.sql", "20261121000600_case_inputs_and_basis.sql",
       "20261121000700_case_input_guards.sql",
+      "20261121000800_published_rules.sql", "20261121000900_officer_decisions.sql",
+      "20261121001000_synthetic_program_inputs.sql",
     ]);
     assert.deepEqual(await applyMigrations(sql), []);
     const passwords = Object.fromEntries(["CITIZEN_A", "CITIZEN_B", "HELPER", "OFFICER", "ADMIN", "AUDITOR"]
@@ -52,6 +54,6 @@ test("synthetic setup provisions every role and two citizens without duplicating
       { role: "CITIZEN", count: 2 }, { role: "HELPER", count: 1 }, { role: "OFFICER", count: 1 },
       { role: "ADMIN", count: 1 }, { role: "AUDITOR", count: 1 },
     ]);
-    assert.equal((await db.query("select * from public.department_memberships")).rows.length, 1);
+    assert.equal((await db.query("select * from public.department_memberships")).rows.length, 2);
   } finally { await db.close(); }
 });

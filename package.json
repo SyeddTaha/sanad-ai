@@ -17,6 +17,7 @@
     "test:backend:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b01.live.test.ts",
     "test:b02:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b02.live.test.ts",
     "test:b03:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b03.live.test.ts",
+    "test:b04:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b04.live.test.ts",
     "test:ai-trust": "node --env-file-if-exists=.env.local --import tsx --test spikes/ai-trust/crypto/*.test.ts spikes/ai-trust/ai/*.test.ts"
   },
   "dependencies": {

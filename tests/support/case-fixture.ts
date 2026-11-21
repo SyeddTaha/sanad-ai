@@ -19,6 +19,7 @@ before(async () => {
   }
   await db.query("insert into public.departments(id,name) values($1,'Synthetic Department')", [id(30)]);
   await db.query("insert into public.department_memberships values($1,$2,now())", [id(4), id(30)]);
+  await db.query("insert into public.department_memberships values($1,$2,now())", [id(5), id(30)]);
 });
 after(async () => { await db.close(); });
 
@@ -26,7 +27,7 @@ export function dependencies(actor: number) {
   const transport: typeof fetch = async (input) => {
     const path = new URL(String(input instanceof Request ? input.url : input)).pathname;
     if (path === "/auth/v1/user") return Response.json({ id: id(actor), user_metadata: { roles: ["ADMIN"] } });
-    if (path === "/rest/v1/rpc/sanad_session_context") return Response.json({ principal: { id: id(actor), kind: "HUMAN", roles: [roles[actor - 1]], active: true }, departmentIds: actor === 4 ? [id(30)] : [] });
+    if (path === "/rest/v1/rpc/sanad_session_context") return Response.json({ principal: { id: id(actor), kind: "HUMAN", roles: [roles[actor - 1]], active: true }, departmentIds: [4,5].includes(actor) ? [id(30)] : [] });
     throw new Error("Unexpected Auth request");
   };
   return { clients: authClients("https://project.example.test", "public-test", "secret-test", transport),

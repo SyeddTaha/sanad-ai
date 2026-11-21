@@ -16,7 +16,7 @@ test("private Case persistence denies direct access even under permissive Supaba
   for (const role of ["anon", "authenticated", "service_role"]) {
     await db.exec(`set role ${role}`);
     try {
-      for (const table of ["evidence_items", "assessments", "assessment_evidence", "assessment_sources", "case_events", "case_operation_keys", "case_inputs", "assessment_rule_bases"]) {
+      for (const table of ["evidence_items", "assessments", "assessment_evidence", "assessment_sources", "case_events", "case_operation_keys", "case_inputs", "assessment_rule_bases", "rule_versions", "rule_publication", "case_decisions", "synthetic_program_inputs"]) {
         await assert.rejects(db.query(`select * from public.${table}`), { code: "42501" });
       }
     } finally { await db.exec("reset role"); }
@@ -45,7 +45,7 @@ test("database preserves immutable evidence and Assessment history, rejects cros
   await db.query("insert into public.profiles(id,active) values($1,true)", [owner]);
   for (const target of [caseId, other]) await db.query("insert into public.case_reservations(id,citizen_id) values($1,$2)", [target, owner]);
   await db.query("insert into public.evidence_items(id,case_id,kind,content,actor_id,evidence_version) values($1,$2,'CITIZEN_STATEMENT','{\"text\":\"Synthetic statement\"}',$3,1)", [evidence, caseId, owner]);
-  const rule = crypto.randomUUID();
+  const rule = "b3000000-0000-4000-8000-000000000001";
   await db.query("insert into public.assessments(id,case_id,evidence_version,rule_version_id,assessed_at,record) values($1,$2,1,$3,now(),$4)",
     [assessment, caseId, rule, { id: assessment, caseId, evidenceVersion: 1, ruleVersionId: rule }]);
   await db.query("insert into public.assessment_evidence values($1,$2,$3)", [assessment, caseId, evidence]);
