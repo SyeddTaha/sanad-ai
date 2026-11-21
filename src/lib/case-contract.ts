@@ -29,3 +29,4 @@ export const PassportResponseSchema = ApiSuccessSchema(EvidencePassportSchema);
 export type CaseDraft = z.infer<typeof CaseDraftSchema>;
 export type AddEvidenceRequest = z.infer<typeof AddEvidenceRequestSchema>;
 export type SaveDraftRequest = z.infer<typeof SaveDraftRequestSchema>;
+export type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
