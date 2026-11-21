@@ -6,12 +6,20 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import { message, type CitizenMessageKey } from "./citizen-copy";
 import { CitizenLanguageContext, CitizenLanguageController } from "./citizen-language";
 import { CitizenAudioContext, CitizenUrduAudioGuidance, createBrowserSpeechOutput } from "./citizen-audio";
-import { CitizenSessionContext, CitizenSessionCoordinator, endCitizenSession } from "./citizen-session";
+import {
+  CitizenSessionContext,
+  createCitizenSession,
+  endCitizenSession,
+  startNewCitizenSession,
+} from "./citizen-session";
 
 export function CitizenShell({ children }: { children: ReactNode }) {
   const [languageController] = useState(() => new CitizenLanguageController());
-  const [coordinator] = useState(() => new CitizenSessionCoordinator());
-  const [audioGuidance] = useState(() => new CitizenUrduAudioGuidance(createBrowserSpeechOutput()));
+  const [session, setSession] = useState(() => createCitizenSession());
+  const [audioGuidance, setAudioGuidance] = useState(
+    () => new CitizenUrduAudioGuidance(createBrowserSpeechOutput()),
+  );
+  const { coordinator, generation } = session;
   const [switchAnnouncement, setSwitchAnnouncement] = useState("");
   const language = useSyncExternalStore(
     languageController.subscribe,
@@ -43,6 +51,16 @@ export function CitizenShell({ children }: { children: ReactNode }) {
       confirmation: message("ur", "sessionCleared"),
     });
   };
+  const handleStartNewSession = () => {
+    const nextSession = startNewCitizenSession(session);
+    if (nextSession === session) return;
+
+    setSession(nextSession);
+    setAudioGuidance(new CitizenUrduAudioGuidance(createBrowserSpeechOutput()));
+    languageController.reset();
+    setSwitchAnnouncement(message("ur", "newLocalSessionStarted"));
+    router.replace("/citizen");
+  };
   const text = (key: CitizenMessageKey) => message(language, key);
   const navItems = [
     { href: "/citizen", key: "navHome" },
@@ -60,7 +78,14 @@ export function CitizenShell({ children }: { children: ReactNode }) {
       }}
     >
       <CitizenAudioContext.Provider value={audioGuidance}>
-        <CitizenSessionContext.Provider value={{ coordinator, version: sessionVersion, ended }}>
+        <CitizenSessionContext.Provider
+          value={{
+            coordinator,
+            version: sessionVersion,
+            ended,
+            startNewSession: handleStartNewSession,
+          }}
+        >
           <div className="citizen-root" lang={language} dir={language === "ur" ? "rtl" : "ltr"}>
             <a className="citizen-skip-link" href="#main-content">{text("skip")}</a>
             <header className="citizen-header">
@@ -120,7 +145,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <div key={sessionVersion}>{children}</div>
+            <div key={generation}>{children}</div>
 
             <footer className="citizen-footer">
               <span>{text("footerText")}</span>

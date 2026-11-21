@@ -438,7 +438,7 @@ function ConsentScreen() {
 }
 
 export function CitizenScreen({ screen }: { screen: CitizenScreenName }) {
-  const { ended } = useCitizenSession();
+  const { ended, startNewSession } = useCitizenSession();
   const { language } = useCitizenLanguage();
   const text = (key: CitizenMessageKey) => citizenText(language, key);
 
@@ -447,6 +447,13 @@ export function CitizenScreen({ screen }: { screen: CitizenScreenName }) {
       <main className="citizen-main citizen-session-ended" id="main-content">
         <h1>{text("sessionEndedTitle")}</h1>
         <p>{text("sessionEndedBody")}</p>
+        <button
+          className="citizen-button citizen-button-primary citizen-session-restart"
+          onClick={startNewSession}
+          type="button"
+        >
+          {text("startNewSession")}
+        </button>
       </main>
     );
   }

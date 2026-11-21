@@ -798,6 +798,13 @@
   margin-block-start: 0;
 }
 
+.citizen-session-restart {
+  min-width: min(100%, 16rem);
+  min-height: 3.5rem;
+  margin-block-start: 1rem;
+  font-size: 1.125rem;
+}
+
 .citizen-loading-line {
   width: min(100%, 32rem);
   height: 1.1rem;

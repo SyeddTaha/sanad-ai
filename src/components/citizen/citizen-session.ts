@@ -16,6 +16,7 @@ export type CitizenSessionContextValue = {
   coordinator: CitizenSessionCoordinator;
   version: number;
   ended: boolean;
+  startNewSession: () => void;
 };
 
 export const CitizenSessionContext = createContext<CitizenSessionContextValue | null>(null);
@@ -102,6 +103,27 @@ export class CitizenSessionCoordinator {
       listener();
     }
   }
+}
+
+export type CitizenLocalSession = {
+  coordinator: CitizenSessionCoordinator;
+  generation: number;
+};
+
+export function createCitizenSession(): CitizenLocalSession {
+  return {
+    coordinator: new CitizenSessionCoordinator(),
+    generation: 0,
+  };
+}
+
+export function startNewCitizenSession(current: CitizenLocalSession): CitizenLocalSession {
+  if (!current.coordinator.isEnded) return current;
+
+  return {
+    coordinator: new CitizenSessionCoordinator(),
+    generation: current.generation + 1,
+  };
 }
 
 export function endCitizenSession({
