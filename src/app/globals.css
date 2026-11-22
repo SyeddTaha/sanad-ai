@@ -24,3 +24,73 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+:root {
+  --staff-ink: #143b35;
+  --staff-jade: #17654f;
+  --staff-paper: #f2f6f4;
+  --staff-line: #b6c8c1;
+  --staff-muted: #48635d;
+  --staff-saffron: #f1c75b;
+}
+
+.staff-root {
+  min-height: 100vh;
+  background: var(--staff-paper);
+  color: var(--staff-ink);
+}
+.staff-root aside {
+  background: var(--staff-ink);
+  color: #fff;
+  border-color: #31544e;
+}
+.staff-root aside p:first-child { color: var(--staff-saffron); }
+.staff-root nav a,
+.staff-root nav button { color: #fff; }
+.staff-root nav a:hover,
+.staff-root nav button:hover { background: #31544e; }
+.staff-root main { min-width: 0; }
+.staff-root main > div > header { margin-bottom: 1.25rem; }
+.staff-root h1 { color: var(--staff-ink); letter-spacing: -.025em; }
+.staff-root h2 { color: var(--staff-jade); }
+.staff-root section,
+.staff-root table,
+.staff-root [role="status"],
+.staff-root [role="alert"] { border-radius: .5rem; }
+.staff-root input,
+.staff-root select,
+.staff-root textarea {
+  min-height: 2.75rem;
+  border-color: var(--staff-line);
+  border-radius: .35rem;
+  color: var(--staff-ink);
+}
+.staff-root button:not(:disabled) { cursor: pointer; }
+.staff-root button:focus-visible,
+.staff-root a:focus-visible,
+.staff-root input:focus-visible,
+.staff-root select:focus-visible,
+.staff-root textarea:focus-visible { outline: 3px solid var(--staff-saffron); outline-offset: 2px; }
+.staff-root main > div > section,
+.staff-root main > div > div > section { box-shadow: 0 1px 2px rgb(20 59 53 / 5%); }
+
+.login-root {
+  margin-top: clamp(2rem, 10vh, 7rem);
+  border: 1px solid var(--staff-line);
+  border-top: .5rem solid var(--staff-jade);
+  border-radius: .65rem;
+  background: #fff;
+  color: var(--staff-ink);
+  box-shadow: 0 1.5rem 4rem rgb(20 59 53 / 12%);
+}
+.login-kicker { color: var(--staff-jade); font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.login-root input { min-height: 3rem; border-color: var(--staff-line); border-radius: .35rem; }
+.login-root button { min-height: 3rem; border-radius: .35rem; background: var(--staff-jade); color: white; font-weight: 700; }
+.login-root button:focus-visible,
+.login-root input:focus-visible { outline: 3px solid var(--staff-saffron); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .staff-root aside nav { flex-wrap: wrap; }
+  .staff-root aside nav a,
+  .staff-root aside nav button { min-height: 2.75rem; }
+  .login-root { margin: 1rem; padding: 1.5rem; }
+}
