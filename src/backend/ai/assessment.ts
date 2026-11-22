@@ -37,6 +37,8 @@ export type AssessmentOptions = {
   provider?: ReliefMessageProvider;
   timeoutMs?: number;
   env?: NodeJS.ProcessEnv;
+  // Orchestration supplies the current published rule. Default is the approved synthetic demo policy.
+  minRoutingConfidence?: number;
 };
 export type AssessmentResult = {
   status: "SUCCEEDED" | "INVALID_OUTPUT" | "UNAVAILABLE" | "INVALID_INPUT";
@@ -92,6 +94,8 @@ export async function assessReliefMessage(message: string, options: AssessmentOp
   };
   const input = z.string().trim().min(1).max(MAX_MESSAGE_LENGTH).safeParse(message);
   if (!input.success) return failure("INVALID_INPUT", "INVALID_MESSAGE", baseMetadata);
+  const threshold = z.number().min(0).max(1).safeParse(options.minRoutingConfidence ?? 0.8);
+  if (!threshold.success) return failure("INVALID_INPUT", "INVALID_ROUTING_THRESHOLD", baseMetadata);
   if (!provider) return failure("UNAVAILABLE", "PROVIDER_UNAVAILABLE", withLatency(baseMetadata, started));
 
   const timeoutMs = options.timeoutMs ?? TIMEOUT_MS;
@@ -112,14 +116,14 @@ export async function assessReliefMessage(message: string, options: AssessmentOp
     if (!parsed.success) {
       return failure("INVALID_OUTPUT", "SCHEMA_MISMATCH", withLatency({ ...baseMetadata, tokenUsage: normalized.tokenUsage }, started));
     }
-    return applySafetyPolicy(input.data, parsed.data, withLatency({ ...baseMetadata, tokenUsage: normalized.tokenUsage }, started));
+    return applySafetyPolicy(input.data, parsed.data, withLatency({ ...baseMetadata, tokenUsage: normalized.tokenUsage }, started), threshold.data);
   } catch (error) {
     const failureCode = signal.aborted ? "PROVIDER_TIMEOUT" : errorStatus(error) === 429 ? "RATE_LIMITED" : "PROVIDER_ERROR";
     return failure("UNAVAILABLE", failureCode, withLatency(baseMetadata, started));
   }
 }
 
-function applySafetyPolicy(message: string, model: ReliefAssessmentOutput, metadata: AssessmentResult["metadata"]): AssessmentResult {
+function applySafetyPolicy(message: string, model: ReliefAssessmentOutput, metadata: AssessmentResult["metadata"], minRoutingConfidence: number): AssessmentResult {
   const amounts = messageAmounts(message);
   const refs = uniqueOriginalMatches(message, PAYMENT_REF_PATTERN);
   const issuers = [...new Set([
@@ -151,7 +155,7 @@ function applySafetyPolicy(message: string, model: ReliefAssessmentOutput, metad
       : missingInformation.length > 0 && model.classification !== "PAYMENT_DISPUTE"
         ? "UNKNOWN"
         : model.classification;
-  const recommendedRoute = suspicious || contradictory || classification === "PAYMENT_DISPUTE"
+  const recommendedRoute = suspicious || contradictory || classification === "PAYMENT_DISPUTE" || model.confidence < minRoutingConfidence
     ? "OFFICER_REVIEW"
     : missingInformation.length > 0 || classification === "UNKNOWN"
       ? "ASK_FOR_EVIDENCE"

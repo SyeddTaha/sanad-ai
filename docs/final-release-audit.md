@@ -15,7 +15,7 @@ GitHub metadata and `git merge-base --is-ancestor <PR head> 06bd0c5` agree that 
 
 **PR #16, staff live integration, remains OPEN/DRAFT**, head `2b8472bdca01ef8c255b350175e347f294c0211c`. It was not merged or overwritten. Completed PRs being merged does not establish that their deferred integrations exist.
 
-The original checkout remains on `feat/public-api` with its preexisting uncommitted `tests/integration/b04.live.test.ts` edit. Audit work uses the separate sibling worktree `sanad-ai-final-integration`; no stash, reset, or edit of the original checkout was performed. Frozen v1 contracts, backend implementation, and applied migrations are unchanged by this audit.
+The original checkout remains on `feat/public-api` with its preexisting uncommitted `tests/integration/b04.live.test.ts` edit. Audit work uses the separate sibling worktree `sanad-ai-final-integration`; no stash, reset, or edit of the original checkout was performed. Frozen v1 contracts, Case/authorization HTTP implementation, and applied migrations are unchanged. The standalone AI routing guardrail has the narrow correction documented below.
 
 Read sources: `AGENTS.md`, `SPEC.md` and its canonical `.scratch/sanad-verification/spec.md`, all six ADRs, `GLOSSARY.md`, all three files in `docs/brief/`, B01–B05 handoffs and verification records. `TASKS.md` is absent. The official Markdown brief governs requirement coverage; prior handoff results are not counted as fresh execution evidence.
 
@@ -65,6 +65,7 @@ Read sources: `AGENTS.md`, `SPEC.md` and its canonical `.scratch/sanad-verificat
 | Real AI invoked by authenticated Case request | FAIL | `createAssessment` returns `UNAVAILABLE/provider_not_configured` when processing is authorized. It never invokes `assessForCase`, regardless of configured provider credentials. |
 | Real-provider English and Urdu evaluation | NOT TESTED | Three existing evaluations were invoked and all skipped: `GROQ_API_KEY` and spike-provider credentials absent in this audit environment. Exit 0 is not a live-AI pass. |
 | AI response validation and no financial authority | PASS | Offline injected-provider tests reject invalid schemas, unsupported assertions and timeouts, and project advisory metadata without payment/eligibility authority. No live AI behavior is asserted. |
+| Low-confidence human handoff | PASS | Audit reproduced `confidence:0.01 → INFORMATION_ONLY` in the standalone service. Regression now returns `OFFICER_REVIEW`; supplied threshold/boundary and invalid-threshold tests also pass. Integration must pass the current published `minRoutingConfidence`; default 0.8 is the already approved synthetic policy, not calibrated probability. |
 | AI consent revocation during actual provider work | NOT TESTED | Policy/offline no-processing and replay tests exist, but the two-transaction snapshot/provider/recheck/persist orchestrator is absent. |
 | Evidence Passport immutable assessment/source history | PASS | Contract and offline backend tests exercise prior Assessments, corrections, current access and distinct findings. Fresh local live evidence below. |
 | Rule-version/evidence freshness and atomic human resolution | PASS | Offline tests verify unavailable/stale basis rejection, changed evidence/rules, human reason, consent and rollback. No shared backend code was changed by this audit. |
@@ -103,15 +104,18 @@ The combination of working Auth/RPC sessions and failing SQL-backed queues/keys 
 | `npm ci` | PASS; 405 packages installed, audit reported 0 vulnerabilities. |
 | `npm run test:contracts` | PASS; 25 passed, 0 failed/skipped. |
 | `npm run test:backend` | PASS; 81 passed, 0 failed/skipped. |
-| `node --conditions=react-server --import tsx --test src/backend/adapters/*.test.ts src/backend/ai/assessment.test.ts src/backend/notices/*.test.ts spikes/ai-trust/crypto/*.test.ts spikes/ai-trust/ai/assess-message.test.ts` | PASS; 55 passed, 0 failed/skipped. |
+| `node --conditions=react-server --import tsx --test src/backend/adapters/*.test.ts src/backend/ai/assessment.test.ts src/backend/notices/*.test.ts spikes/ai-trust/crypto/*.test.ts spikes/ai-trust/ai/assess-message.test.ts` | PASS; final source 58 passed, 0 failed/skipped (initial baseline 55, plus three AI guardrail regressions). |
 | `node --import tsx --test src/components/citizen/*.test.ts src/lib/*.test.ts` | PASS; 26 passed, 0 failed/skipped. |
 | Live AI evaluation command (below) | NOT TESTED; 0 passed, 3 skipped for missing credentials. |
 | `npm run typecheck` | PASS; exit 0, including audit script and B01 regression correction. |
-| `npm run lint` | PASS on initial integrated baseline; final delta check pending. |
-| `npm run build` | PASS on integrated baseline, Webpack production build; final entry-route rebuild pending. |
+| `npm run lint` | PASS; exit 0 on final source. |
+| `npm run build` | PASS; Webpack production build on baseline and corrected runtime source `d9ac0f2`. Final build ran in detached sibling `sanad-ai-release-build` to avoid replacing files used by ongoing live suites. |
 | `npm run db:migrate` | PASS; real TLS PostgreSQL connection, none pending. |
 | `scripts/audit-release-http.ts` on public URL | FAIL; 12 probes pass and four fail: entry, API-key rejection, Officer queue, Admin dispatch. |
 | Same smoke on baseline local production | FAIL only for starter entry; all authentication and SQL-backed queue/key probes pass. |
+| Corrected entry on final local production, port 3700 | PASS; same `--entry-only` probe changed from FAIL to HTTP 200 with final path `/citizen`. |
+| Full corrected local HTTP smoke on port 3700 | PASS; all 16 probes, zero failures, including queues/key denial and five real role sessions. |
+| Configured-secret scan | PASS; 8 private configured values absent from feature diff and 85 public static files in final build (86 inspected inputs including diff). No values printed. |
 | Mobile Chrome browser smoke | Executed against public host; failures detailed above. Harness exit 0 means observations completed, not release readiness. |
 | B01–B05 local live suites | In progress; final results must replace this row before closing the audit. |
 
@@ -132,12 +136,21 @@ Existing live suites run sequentially on development services with all `B01_BASE
 
 ## Narrow release fixes
 
-1. `src/app/page.tsx`: `/` redirects to existing `/citizen` instead of the Next.js starter. The HTTP entry probe failed before the change; final rebuilt result is pending. No new Citizen functionality is implied.
+1. `src/app/page.tsx`: `/` redirects to existing `/citizen` instead of the Next.js starter. The HTTP entry probe failed before the change and passed against the rebuilt production app on port 3700. No new Citizen functionality is implied.
 2. `docs/deployment.md`: documents runtime PostgreSQL/TLS requirements and build-time staff live-mode switch. No deployment environment was changed.
 3. `tests/integration/b01.live.test.ts`: compares returned department IDs with actual stored memberships and requires the approved seed department, instead of assuming a staff account has exactly one department. The first live run failed at `2 !== 1`; two memberships exist for both staff roles. Seed is additive and correctly retains them. Session cookies are retained for cleanup before subsequent assertions.
 4. `scripts/audit-release-http.ts`: repeatable red-capable smoke with credential-free output, including explicit public queue/key assertions.
+5. `src/backend/ai/assessment.ts` and its existing service tests: confidence previously never participated in deterministic routing. The minimized synthetic-provider repro and new regression failed with `0.01/INFORMATION_ONLY`; the fix requires human review below the supplied rule threshold, validates that threshold before processing, and preserves the actual advisory score. Three regressions pass, with no real provider claim. No HTTP/frozen contract changes; the optional server-only option allows future orchestration to supply the current immutable rule's threshold.
 
 No missing mock service, approved shared contract, AI orchestration, staff draft work, migration, role, or permission policy was invented or replaced to make checks green. These missing implementations are material work with ownership/contract dependencies, not a safe final-audit patch.
+
+## Focused review
+
+Review target: `git diff 06bd0c5...d9ac0f2`. Independent read-only Standards and Spec reviews were required by the implement/code-review skills; neither reviewer accessed credentials, changed data or reran live tests.
+
+**Standards:** zero documented violations. One optional P3 duplication heuristic: the smoke repeats synthetic actor/email definitions already present in the server-only seed module. Values match; consolidating fixtures is deferred outside release-blocker scope.
+
+**Spec:** zero introduced functional mismatches or scope creep. The reviewer required pending live evidence to be finalized before closure and confirmed that inherited product gaps must keep the release gate at FAIL. These review results do not approve the incomplete product for release.
 
 ## Exact remaining submission blockers
 
