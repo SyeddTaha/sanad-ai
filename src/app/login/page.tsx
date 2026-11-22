@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { login, logout, session } from "@/lib/auth/browser";
 import type { SessionContext } from "@/lib/auth/session-contract";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [context, setContext] = useState<SessionContext | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -17,9 +19,12 @@ export default function LoginPage() {
     setMessage("");
     setBusy(true);
     try {
-      setContext(await login(String(input.get("email")), String(input.get("password"))));
+      const nextContext = await login(String(input.get("email")), String(input.get("password")));
+      setContext(nextContext);
       form.reset();
       setMessage("Signed in. Your session expires within one hour; sign in again after expiry.");
+      if (nextContext.principal.roles.includes("HELPER")) router.push("/helper");
+      else if (nextContext.principal.roles.includes("CITIZEN")) router.push("/citizen");
     } catch { setMessage("Sign-in failed. Check your credentials and active account, or try again later."); }
     finally { setBusy(false); }
   }
