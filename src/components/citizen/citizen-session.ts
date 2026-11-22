@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import { CitizenMutationKeys } from "./citizen-api";
 
 export type CitizenRequestResult<T> =
   | { status: "current"; value: T }
@@ -14,6 +15,7 @@ type CitizenSessionAction = {
 
 export type CitizenSessionContextValue = {
   coordinator: CitizenSessionCoordinator;
+  mutationKeys: CitizenMutationKeys;
   version: number;
   ended: boolean;
   startNewSession: () => void;

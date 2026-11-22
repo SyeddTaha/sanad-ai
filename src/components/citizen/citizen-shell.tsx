@@ -12,10 +12,13 @@ import {
   endCitizenSession,
   startNewCitizenSession,
 } from "./citizen-session";
+import { CitizenMutationKeys } from "./citizen-api";
+import { logout } from "@/lib/auth/browser";
 
 export function CitizenShell({ children }: { children: ReactNode }) {
   const [languageController] = useState(() => new CitizenLanguageController());
   const [session, setSession] = useState(() => createCitizenSession());
+  const [mutationKeys, setMutationKeys] = useState(() => new CitizenMutationKeys());
   const [audioGuidance, setAudioGuidance] = useState(
     () => new CitizenUrduAudioGuidance(createBrowserSpeechOutput()),
   );
@@ -42,20 +45,35 @@ export function CitizenShell({ children }: { children: ReactNode }) {
     document.documentElement.dir = language === "ur" ? "rtl" : "ltr";
   }, [language]);
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
+    mutationKeys.clear();
     endCitizenSession({
       session: coordinator,
       resetLanguage: languageController.reset,
       navigate: (href) => router.replace(href),
       announce: setSwitchAnnouncement,
-      confirmation: message("ur", "sessionCleared"),
+      confirmation: language === "ur"
+        ? "مقامی سیشن صاف ہو گیا؛ سرور سائن آؤٹ کی تصدیق ہو رہی ہے..."
+        : "Local session cleared; confirming server sign-out...",
     });
+    try {
+      await logout();
+      setSwitchAnnouncement(language === "ur"
+        ? "سرور سائن آؤٹ اور مقامی سیشن صاف ہو گئے۔"
+        : "Server sign-out confirmed and local session cleared.");
+    } catch {
+      setSwitchAnnouncement(language === "ur"
+        ? "مقامی سیشن صاف ہو گیا؛ سرور سائن آؤٹ تصدیق شدہ نہیں۔"
+        : "Local session cleared; server sign-out could not be confirmed.");
+    }
   };
   const handleStartNewSession = () => {
     const nextSession = startNewCitizenSession(session);
     if (nextSession === session) return;
 
     setSession(nextSession);
+    mutationKeys.clear();
+    setMutationKeys(new CitizenMutationKeys());
     setAudioGuidance(new CitizenUrduAudioGuidance(createBrowserSpeechOutput()));
     languageController.reset();
     setSwitchAnnouncement(message("ur", "newLocalSessionStarted"));
@@ -81,6 +99,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
         <CitizenSessionContext.Provider
           value={{
             coordinator,
+            mutationKeys,
             version: sessionVersion,
             ended,
             startNewSession: handleStartNewSession,
