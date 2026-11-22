@@ -1,0 +1,406 @@
+SANAD final release test evidence
+All inputs and retained records are synthetic.
+Final runtime source: 0f24cba. Offline tests, final B01, curl and final local HTTP use this source.
+B02-B05 production HTTP used baseline 06bd0c5; their HTTP/services/contracts are unchanged in the feature.
+
+===== final-contracts.log =====
+
+> root@0.1.0 test:contracts
+> tsx --test src/contracts/v1/*.test.ts
+
+✔ success and collection envelopes validate their concrete data with no error branch (55.7352ms)
+✔ error envelopes use finite codes, message keys and sanitized field errors (5.0215ms)
+✔ a Rule Version preserves published structured parameters and publication provenance (41.9472ms)
+✔ AI abstention metadata carries no invented score, success, model run or recommendation (12.0459ms)
+✔ a successful AI run records actual versions and advisory results only (3.8947ms)
+✔ failed AI attempts retain provenance while no-run unavailability remains explicit (1.5347ms)
+✔ assessment and passport carry independent findings with evidence, source and rule revisions (19.3123ms)
+✔ case transitions accept the ADR 0004 workflow including consent interruption and fresh review (11.1116ms)
+✔ a Case carries workflow and revision metadata without an evidence verdict (11.5223ms)
+✔ case transitions reject skipped review, reopening, no-ops and draft or approval states (8.7678ms)
+✔ resolution input requires a reviewed Assessment, positive expected version and meaningful bounded reason (7.04ms)
+✔ a scoped helper grant preserves explicit recipient, actions, purpose and withdrawal history (29.1709ms)
+✔ authorization context represents verified principal, ownership, assignment and independent grants (7.1778ms)
+✔ grant shapes reject empty or duplicate scopes and impossible grant chronology (2.4977ms)
+✔ grant chronology preserves RFC3339 fractional precision instead of rounding to milliseconds (0.7517ms)
+✔ an Evidence Passport can report valid origin, pending payment and unknown eligibility independently (32.9348ms)
+✔ source attempts carry no fabricated record identity or version (4.1653ms)
+✔ valid signature remains representable with expiry, revocation or missing payment without a combined verdict (1.7988ms)
+✔ the v1 public exports share the frozen revision, role/status vocabulary and error catalog (13.7182ms)
+✔ exported inferred types compose with the same runtime schemas used by consumers (49.0643ms)
+✔ a synthetic signed-notice payload preserves the spec's minor units and references (17.32ms)
+✔ notice headers require exact Ed25519 and prohibit embedded trust sources (4.4032ms)
+✔ a notice requires expiry strictly after issuance (1.1105ms)
+✔ compact notice transport requires three bounded nonempty base64url segments (1.8936ms)
+✔ notice payloads reject coercion, unsafe values, identity fields and unsupported versions (4.8331ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2567.2241
+
+===== final-backend.log =====
+
+> root@0.1.0 test:backend
+> node --conditions=react-server --import tsx --test tests/backend/*.test.ts
+
+✔ issuance returns a one-time secret, while retries and listing return only metadata (21493.1502ms)
+✔ valid scoped key reads a consent-authorized draft as its server-derived service principal (399.2926ms)
+✔ scopes restrict reads and mutations; role headers and a broad request cannot elevate a helper (386.3533ms)
+✔ withdrawal immediately blocks scoped reads and cached mutation responses; unrelated Citizens remain private (685.8287ms)
+✔ only the issuing human can revoke; revocation immediately rejects a previously valid credential (648.1885ms)
+✔ expired, malformed, unknown and conflicting credentials fail closed with shared errors (290.9357ms)
+✔ current roles, profile activity and department membership constrain keys on every request (183.8044ms)
+✔ failed issuance audit rolls back the credential and retry record without disclosing a secret (93.7792ms)
+✔ issuance rejects caller identity, invalid lifetimes, duplicate scopes and scope escalation by a Citizen (121.4102ms)
+✔ an identical issuance retry after credential expiry still returns original metadata without the secret (1109.7309ms)
+✔ Citizen A reads their own evidence and cannot read Citizen B's evidence (6.4973ms)
+✔ officers need assignment, the assigned department and that department's action grant (1.1656ms)
+✔ admin and auditor roles do not confer private evidence or mutations; role combinations cannot launder grants (1.0646ms)
+✔ helper access requires a live grant for the exact recipient, case, purpose and action (0.9198ms)
+✔ AI processing requires both initiating permissions and independent processor consent (0.9029ms)
+✔ private Case persistence denies direct access even under permissive Supabase roles (23045.7082ms)
+✔ submitted input pointers cannot be changed or deleted underneath an Assessment (237.7935ms)
+✔ database preserves immutable evidence and Assessment history, rejects cross-Case provenance and rolls back atomically (216.3864ms)
+✔ Case detail returns only metadata to its Citizen and denies cross-Citizen and privileged-role access (21432.8663ms)
+✔ an explicitly authorized helper submits under department sharing; role and live consent are required on every replay (1063.7038ms)
+✔ AI is explicitly unavailable only with processing consent; consent withdrawal denies Assessment replay (828.3417ms)
+✔ Assessments without integrations retain UNKNOWN findings, unavailable provenance and immutable earlier input versions (745.1336ms)
+✔ Citizen saves reserved input and submits the same Case once, with original-outcome replay (576.5641ms)
+✔ evidence addition is immutable, versioned, replayable and reauthorizes after helper withdrawal (1198.1846ms)
+✔ Passport reads preserve six independent findings and immutable historical Assessments with current sharing checks (429.5968ms)
+✔ withdrawing evidence sharing denies subsequent Passport reads while independent Case metadata sharing survives (469.3261ms)
+✔ Case history includes append-only evidence and consent events and uses validated bounded pagination (300.3608ms)
+✔ invalid evidence and terminal Case changes fail without private values in errors (179.6265ms)
+✔ audit failure rolls back evidence, versions, history and replay keys; retry can then succeed (301.3795ms)
+✔ draft retries preserve original content; empty, stale, malformed and foreign-linked submissions fail safely (321.125ms)
+✔ an expired assigned officer request commits the consent interruption while denying evidence (111.7585ms)
+✔ Citizen reservation is owner-bound, idempotent and rejects client identity claims (21338.136ms)
+✔ citizen creates scoped sharing; helper cannot self-authorize or exceed scope; withdrawal stops subsequent reads and retries (827.8785ms)
+✔ unfinished HTTP bodies cannot hold authorization database locks (51.5558ms)
+✔ body deadline rejects an unfinished stream even when its prefix is valid JSON (40.4361ms)
+✔ department withdrawal interrupts review, restoration requires fresh review, helper withdrawal is independent and terminal history survives (1070.6175ms)
+✔ failed audit persistence rolls back consent and case changes; failed protected writes leave no allowed audit (352.0314ms)
+✔ expired department grants deny reads immediately and lazy reconciliation records one interruption (98.0812ms)
+✔ new storage and mutation triggers cannot be used by browser database roles (14.9086ms)
+✔ HTTP validates processor consent, expiry, recipient roles, idempotency and cookie CSRF (229.0624ms)
+✔ protected operations reload server roles and active status instead of trusting resolved or client roles (46.2636ms)
+✔ principal lookup binds a live Auth session to its owner and restricts execution (20985.4196ms)
+✔ an Auth session past its server-side expiry cannot resolve a principal (51.3185ms)
+✔ all foundation tables enforce RLS and deny direct client access, including self-promotion (231.168ms)
+✔ the application's service role cannot edit audit history or query private case tables (17.6871ms)
+✔ case submission and consent must retain the reserved citizen owner (83.7485ms)
+✔ cross-origin login and logout are denied before the session is changed (129.4005ms)
+✔ email/password login returns validated identity and only an HttpOnly strict session cookie (114.8808ms)
+✔ login rejects incorrect passwords, inactive users and client-supplied roles without setting cookies (108.8605ms)
+✔ logout revokes only the current provider session and expires the HttpOnly cookie (18.8877ms)
+✔ staff queue rejects other roles; department admin dispatch exposes only minimal metadata (21524.486ms)
+✔ resolution refuses UNAVAILABLE basis; fresh authorized review appends a final Assessment and resolves the Case (1970.3891ms)
+✔ evidence and rule changes invalidate reviewed Assessments; revoked consent prevents resolution and replay (1610.2645ms)
+✔ failed success audit rolls back the final Assessment, decision and state; immutable decision history survives closure (1822.8919ms)
+✔ private evidence and decision explanations require evidence permission; auditors see minimal immutable audit metadata (596.1968ms)
+✔ department admin assigns with a version and reason; only assigned officer starts review (1049.9194ms)
+✔ review requests evidence, Citizen adds and resubmits, escalation preserves state and closing requires resolution (700.5695ms)
+✔ admin priority and reassignment require the exact shared department; losing membership blocks officer access (488.0038ms)
+✔ resubmission rechecks active department sharing at commit even for the Citizen owner (706.8752ms)
+✔ reassignment immediately removes the previous officer's evidence authority; queue filters and cursor preserve null confidence (675.6737ms)
+✔ queue disclosures retain their Case and consent references in minimal audit history (433.8733ms)
+✔ queue rechecks consent after its awaited audit before returning any metadata (371.6146ms)
+✔ officer queue confidence requires evidence sharing in addition to Case metadata permission (447.6896ms)
+✔ an inaccessible queue cursor cannot reveal ordering metadata from another Case (423.6565ms)
+✔ reassignment to a department with dispatch-only sharing immediately interrupts review (371.722ms)
+✔ public OpenAPI is a valid machine-readable document and covers exactly the implemented operations (4421.739ms)
+✔ published synthetic request examples validate against the implemented request schemas (40.1282ms)
+✔ only an active admin publishes bounded synthetic parameters; versions and digest remain immutable (17890.7854ms)
+✔ published income rules evaluate only scoped synthetic program inputs; changes preserve earlier findings and ambiguous inputs abstain (1323.8378ms)
+✔ new Assessments use the published rule immediately and retain historical references (310.0968ms)
+✔ synthetic setup provisions every role and two citizens without duplicating accounts on repeat (12526.3389ms)
+✔ session endpoint authenticates the user and returns only database-backed roles and departments (83.4411ms)
+✔ session endpoint rejects missing session (8.9169ms)
+✔ session endpoint rejects expired JWT (7.8598ms)
+✔ session endpoint rejects revoked session (6.7922ms)
+✔ session endpoint rejects inactive profile (11.9424ms)
+✔ session endpoint rejects profile without roles (5.0921ms)
+✔ session endpoint rejects mismatched principal (10.1137ms)
+✔ session endpoint rejects unavailable Auth provider (3.5548ms)
+✔ session endpoint rejects conflicting credentials (3.7098ms)
+✔ session endpoint rejects self-asserted API key (4.9067ms)
+ℹ tests 81
+ℹ suites 0
+ℹ pass 81
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41715.1915
+
+===== final-server-offline.log =====
+✔ invalid model output is rejected and cannot set signature, settlement, or eligibility (8.3892ms)
+✔ malformed model JSON stays an invalid-output finding (2.3215ms)
+✔ a provider timeout does not invent a confidence score or route (49.8782ms)
+✔ a valid compact Ed25519 notice verifies and does not decide payment or eligibility (57.4702ms)
+✔ changing the amount without re-signing invalidates the signature (3.1584ms)
+✔ changing the recipient reference without re-signing invalidates the signature (2.8442ms)
+✔ changing the payment reference without re-signing invalidates the signature (3.0328ms)
+✔ an issuer that does not own the trusted key stays not verified (6.1822ms)
+✔ an unknown key id is not verified from any other registry key (4.5932ms)
+✔ EdDSA is rejected instead of being treated as Ed25519 (1.4397ms)
+✔ a malformed compact JWS is not verified (0.6337ms)
+✔ an attacker-supplied public key cannot establish issuer trust (9.9203ms)
+✔ an authentic expired notice keeps a valid signature and a separate expiry finding (3.9565ms)
+✔ duplicate JSON members are rejected before parse (11.038ms)
+✔ a registry outage stays not verified (0.5638ms)
+✔ signed-notice adapter preserves independent signature, expiry, revocation and trust findings (108.0176ms)
+✔ malformed signed-notice input remains unknown and does not consult a notice-supplied key (2.3779ms)
+✔ successful AI assessment retains the internal trace and projects advisory metadata only (27.871ms)
+✔ AI abstention preserves the failure code and routes to officer review (6.0718ms)
+✔ unconfigured AI remains a no-run abstention with null provenance fields (9.9372ms)
+✔ invalid AI input is surfaced for caller validation rather than persisted as an Assessment (0.9201ms)
+✔ assesses a normal synthetic relief notice and returns non-sensitive run metadata (27.083ms)
+✔ low confidence requires officer review even when the notice has complete claims (3.4024ms)
+✔ routing follows the supplied rule threshold and accepts confidence at its boundary (2.4393ms)
+✔ invalid routing thresholds are rejected before contacting the provider (2.7193ms)
+✔ treats message instructions as untrusted and forces suspicious officer review (2.7684ms)
+✔ deterministically sends a direct payment request to officer review (1.4406ms)
+✔ invalid schema output abstains without returning a model route (1.2637ms)
+✔ null missing-information and textual confidence values fail closed (2.3726ms)
+✔ model authority fields cannot enter a successful assessment (2.1974ms)
+✔ malformed provider JSON abstains safely (1.4698ms)
+✔ timeouts abstain and record failure metadata only (34.3771ms)
+✔ rate limits and unavailable providers abstain without exposing provider errors (1.8073ms)
+✔ unsafe authoritative explanation is replaced with a safe explanation (1.3384ms)
+✔ deterministic overrides route missing details and contradictory claims safely (3.2203ms)
+✔ input validation fails closed without sending oversized messages to the provider (0.8653ms)
+✔ the five A01 scenarios retain their deterministic routing expectations (8.0416ms)
+✔ synthetic Urdu and mixed-language cases preserve extraction and safe routing (27.3373ms)
+✔ a trusted issuer can sign and verify a v1 notice without inferring payment or eligibility (84.682ms)
+✔ changing amount, recipient, or payment reference invalidates the original signature (11.0729ms)
+✔ an unknown issuer is not attributed to the trusted key owner (8.3762ms)
+✔ an unknown key is not resolved using another issuer key (3.1437ms)
+✔ a trusted key cannot authenticate a different issuer binding (6.1411ms)
+✔ an unsupported algorithm is not accepted as Ed25519 (6.3402ms)
+✔ revoked and untrusted key records never authenticate a notice (6.3051ms)
+✔ a revoked issuer is distinct from notice revocation (5.0738ms)
+✔ expiry and notice revocation remain separate from a valid signature (11.1897ms)
+✔ registry outages remain unknown without erasing independently valid findings (22.8221ms)
+✔ signing rejects non-contract notices and extractable private keys explicitly (6.6792ms)
+✔ signing rejects a key assigned to a different issuer (3.3544ms)
+✔ malformed compact input and notice-supplied keys stay unverified (6.2969ms)
+✔ duplicate JSON members in both JWS segments are rejected before parsing (13.7509ms)
+✔ unsupported versions and malformed signed payloads are not verified (11.3109ms)
+✔ A05 demo scenarios expose independent notice findings and source versions through A04 (103.8902ms)
+✔ synthetic registry distinguishes unknown records, unavailable sources and missing revocation records (13.5561ms)
+✔ synthetic registry rejects duplicate records and invalid source versions (6.8558ms)
+✔ synthetic issuer, key and notice revocation records keep independent versions (3.5336ms)
+✔ synthetic notice demo refuses to run in production (1.3117ms)
+ℹ tests 58
+ℹ suites 0
+ℹ pass 58
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2452.3687
+
+===== final-client.log =====
+✔ Urdu guidance starts only with an Urdu voice and reports playback completion (2.5046ms)
+✔ stopping Urdu guidance cancels playback and ignores late completion (0.5695ms)
+✔ missing Urdu voices are reported without claiming playback (0.4342ms)
+✔ speech errors are reported as failed playback (0.392ms)
+✔ Citizen language switches from Urdu to English and back to Urdu (3.9138ms)
+✔ ending a session resets the language to Urdu (0.8058ms)
+✔ ending a Citizen session clears local state, stops audio, resets language, and returns home (2.2085ms)
+✔ late request results are discarded after ending the Citizen session (1.7744ms)
+✔ starting a new Citizen session creates a fresh active coordinator generation (0.4575ms)
+✔ a previous session response cannot replace data in the new session (0.593ms)
+✔ previous-session audio stops and ignores callbacks after restart (1.5204ms)
+✔ repeated end and start cycles keep creating active session generations (0.629ms)
+✔ creates and reuses one idempotency key for a logical mutation (8.3144ms)
+✔ uses new keys for successive or changed mutations (0.6708ms)
+✔ validates strict staff API payloads (6.6442ms)
+✔ rejects malformed staff API payloads (1.8772ms)
+✔ preserves exact backend error codes (0.4297ms)
+✔ keeps pending keys through ambiguous retries and does not reuse a succeeded key for changed payload (0.5518ms)
+✔ maps authentication authorization stale and consent failures exactly (0.4556ms)
+✔ live mode exposes fetch failures and never substitutes fixture data (38.2386ms)
+✔ status labels distinguish fixture and live configuration (0.2641ms)
+✔ live resolution stays disabled until an Assessment ID is obtained (0.3594ms)
+✔ repeat success starts a new logical mutation (0.3024ms)
+✔ timeout retry reuses the pending key (0.237ms)
+✔ definitive rejection retains the original key for exact rejection replay (0.5352ms)
+✔ switching staff sessions clears mutation keys (0.3764ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 937.2575
+
+===== b01-final.log =====
+
+> root@0.1.0 test:backend:live
+> node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b01.live.test.ts
+
+▶ B01 live Supabase/PostgreSQL/HTTP acceptance
+  ✔ database connects and applied migrations are current on repeat (4567.9776ms)
+  ✔ all five roles and two citizens provision idempotently against real Auth and PostgreSQL (12132.6188ms)
+  ✔ every synthetic account authenticates through HTTP and resolves database-backed identity (19266.6017ms)
+  ✔ unauthenticated and invalid or expired tokens are rejected (1985.2776ms)
+  ✔ client identity and role assertions cannot elevate a citizen (1152.1513ms)
+  ✔ inactive profiles immediately lose protected access (1992.4096ms)
+  ✔ a real Auth session past its database expiry is rejected despite a valid access token (2007.7786ms)
+  ✔ anonymous and citizen SQL roles cannot read another citizen's existing records or self-promote (6213.6982ms)
+  ✔ direct Supabase REST calls deny anonymous reads and citizen self-promotion (1604.6481ms)
+  ✔ cross-origin authentication mutations are denied (866.7425ms)
+  ✔ logout invalidates replay of the previously valid token (1958.3119ms)
+✔ B01 live Supabase/PostgreSQL/HTTP acceptance (62039.6403ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 63193.6879
+
+===== test-b02-live.log =====
+
+> root@0.1.0 test:b02:live
+> node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b02.live.test.ts
+
+▶ B02 live consent HTTP, authorization, transactions and revocation
+  ✔ real logins and migration ledger (10171.1667ms)
+  ✔ HTTP reservation binds authenticated owner, retries once, and rejects hostile claims (41501.2206ms)
+  ✔ real authorization boundary enforces owner isolation and scoped helper sharing (197547.2899ms)
+  ✔ failed protected transaction rolls back changes and its allowed audit (8971.4475ms)
+  ✔ write-first ordering completes before waiting HTTP revocation; later writes are denied (33488.1274ms)
+  ✔ revocation-first ordering blocks a concurrent protected write until it can observe revocation (17171.8371ms)
+  ✔ direct database clients still cannot access case, grant or replay storage (3323.6417ms)
+✔ B02 live consent HTTP, authorization, transactions and revocation (325530.293ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 327035.9165
+
+===== test-b03-live.log =====
+
+> root@0.1.0 test:b03:live
+> node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b03.live.test.ts
+
+▶ B03 live protected evidence persistence, concurrent writes and rollback
+  ✔ real Auth logins and development migration ledger (15152.9034ms)
+  ✔ persisted draft and concurrent submission retain the reservation and create exactly one Case (43856.9252ms)
+  ✔ metadata ownership, denied roles and absent Passport stay private (37360.6133ms)
+  ✔ evidence retries return original content and versions; changed payload conflicts (39300.3929ms)
+  ✔ concurrent independent writes reject stale versions; concurrent identical retries commit once (48321.6485ms)
+  ✔ withdrawal blocks cached evidence responses (41824.917ms)
+  ✔ withdrawal committed first denies an already waiting HTTP write (26078.2883ms)
+  ✔ Passport generation stores independent unknowns, sources and immutable historical Assessments (98487.1334ms)
+  ✔ HTTP audit failure rolls back evidence, revisions and replay keys on real PostgreSQL (42233.435ms)
+  ✔ real helper submission, department sharing, withdrawal replay denial and assigned-officer expiry (90106.5968ms)
+  ✔ immutable database history and direct-client permissions (15055.0581ms)
+✔ B03 live protected evidence persistence, concurrent writes and rollback (508580.1941ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 509363.1154
+
+===== test-b04-live.log =====
+
+> root@0.1.0 test:b04:live
+> node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b04.live.test.ts
+
+▶ B04 live officer workflow, published rules and transactional resolution
+  ✔ real Auth, applied migrations, restricted publication and approved synthetic policy (45887.0267ms)
+  ✔ dispatch metadata, officer queue and direct private evidence denials (163510.0361ms)
+  ✔ evidence requests, Citizen resubmission and escalation follow ADR 0004 (130382.1965ms)
+  ✔ published income changes affect fresh findings while historical rules and Assessments remain intact (187919.6603ms)
+  ✔ stale evidence and newly published rules prevent resolution (155100.1779ms)
+  ✔ revoked department consent blocks resolution and preserves pending-consent history (112711.678ms)
+  ✔ concurrent resolutions with distinct keys cannot both commit (106598.0524ms)
+  ✔ a concurrent source append commits first and prevents the blocked stale decision (96630.9706ms)
+  ✔ publication-first lock ordering rejects the reviewed old rule through actual HTTP (104034.6652ms)
+  ✔ resolution-first lock ordering retains its historical rule while publication waits (120374.2042ms)
+  ✔ failed audit atomically rolls back the final assessment, decision, state and retry outcome (153908.6849ms)
+B04 observed example: {"caseId":"2ab46e40-ae0d-4c45-977d-24a39febcb47","assessmentId":"c6c16a99-1646-4cc6-94cc-a18acd39783b","resolutionId":"849d44d0-2c73-41df-94f7-4e031ba5e94b","status":"CLOSED"}
+  ✔ working authorized resolution example, immutable explanation, close and withdrawal-safe retry (148984.5451ms)
+B04 final assignment example: {"caseId":"46792816-cfd1-4cfa-b9af-2d4e08fb7784","assessmentId":"6651e980-68ed-45b5-8144-fca382a4de3e","resolutionId":"088e8f20-8ffe-4550-a9f6-d447e9323ec6","status":"CLOSED"}
+  ✔ dispatch-only reassignment interrupts review and restored sharing enables resolution (194307.2396ms)
+✔ B04 live officer workflow, published rules and transactional resolution (1733207.164ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1734546.8751
+
+===== test-b05-live.log =====
+
+> root@0.1.0 test:b05:live
+> node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b05.live.test.ts
+
+▶ B05 live scoped public API and credential lifecycle
+  ✔ real Auth identities, applied migration and valid public OpenAPI (10610.6239ms)
+  ✔ issue once, replay without a secret, metadata list and cryptographic hash only at rest (19304.3312ms)
+  ✔ valid scoped read and mutation, missing scope, cross-Citizen denial and role escalation denial (92555.192ms)
+  ✔ consent withdrawal blocks reads and completed idempotent responses immediately (47659.5971ms)
+  ✔ officer/admin keys reuse assignment, membership, review, escalation and close workflows (149609.23ms)
+  ✔ expired/unknown credentials, malformed requests and owner-only revocation use safe envelopes (21909.1672ms)
+  ✔ revocation serializes with an in-flight protected mutation and blocks all subsequent access (43257.1626ms)
+  ✔ revocation demonstration and secret-free minimal audit history (27079.1254ms)
+✔ B05 live scoped public API and credential lifecycle (425737.6197ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 426873.6554
+
+===== curl-final.log =====
+
+> root@0.1.0 demo:b05
+> node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/demo-public-api.ts
+
+1. curl issue scoped key: 201 (secret captured in memory, omitted)
+2. curl authorized Case read: 200
+3. curl forbidden evidence read: 403 INSUFFICIENT_SCOPE
+4. curl revoke key as issuing human: 200
+5. curl access after revocation: 401 INVALID_API_KEY
+Synthetic Case: 7b730bbf-e0df-4b02-a60f-880ebe766351 Credential metadata ID: 94e74399-72b5-4a8d-a92f-64926d837539
+
+===== local-final.log =====
+{"base":"http://localhost:3700","at":"2026-11-22T06:55:58.461Z"}
+{"check":"page /","status":"PASS","evidence":{"http":200,"finalPath":"/citizen"}}
+{"check":"page /login","status":"PASS","evidence":{"http":200,"finalPath":"/login"}}
+{"check":"page /citizen","status":"PASS","evidence":{"http":200,"finalPath":"/citizen"}}
+{"check":"page /citizen/verify","status":"PASS","evidence":{"http":200,"finalPath":"/citizen/verify"}}
+{"check":"page /citizen/results","status":"PASS","evidence":{"http":200,"finalPath":"/citizen/results"}}
+{"check":"page /citizen/dispute","status":"PASS","evidence":{"http":200,"finalPath":"/citizen/dispute"}}
+{"check":"page /citizen/case","status":"PASS","evidence":{"http":200,"finalPath":"/citizen/case"}}
+{"check":"page /citizen/consent","status":"PASS","evidence":{"http":200,"finalPath":"/citizen/consent"}}
+{"check":"public OpenAPI","status":"PASS","evidence":{"http":200,"paths":32}}
+{"check":"anonymous session denied","status":"PASS","evidence":{"http":401}}
+{"check":"invalid API key denied","status":"PASS","evidence":{"http":401}}
+{"check":"authenticated CITIZEN_A","status":"PASS","evidence":{"loginHttp":200,"sessionHttp":200,"roles":["CITIZEN"]}}
+{"check":"authenticated OFFICER","status":"PASS","evidence":{"loginHttp":200,"sessionHttp":200,"roles":["OFFICER"]}}
+{"check":"authenticated ADMIN","status":"PASS","evidence":{"loginHttp":200,"sessionHttp":200,"roles":["ADMIN"]}}
+{"check":"authenticated HELPER","status":"PASS","evidence":{"loginHttp":200,"sessionHttp":200,"roles":["HELPER"]}}
+{"check":"authenticated AUDITOR","status":"PASS","evidence":{"loginHttp":200,"sessionHttp":200,"roles":["AUDITOR"]}}
+{"verdict":"PASS","failures":0}

@@ -51,7 +51,8 @@ repository. Names below match `.env.example` and
 
 Set these in Vercel for Production (and Preview, if sign-in should work there).
 Mark every secret and database value as sensitive. `NEXT_PUBLIC_*` values are
-exposed to the browser; they may only be the project URL and publishable key.
+exposed to the browser; use only the project URL, publishable key and public
+staff-mode flag below.
 
 | Name | Scope |
 | --- | --- |
@@ -60,17 +61,27 @@ exposed to the browser; they may only be the project URL and publishable key.
 | `SUPABASE_SECRET_KEY` | Server only. Never prefix with `NEXT_PUBLIC_`. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Browser. Same project URL. |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser. Publishable key only. |
+| `SUPABASE_STRING` | Server only. PostgreSQL URI used by B02–B05 authorization transactions, Cases, rules, audit reads and API keys. Configure a host-reachable endpoint. |
+| `SUPABASE_DB_CA_FILE` | Server only, if required by the database certificate chain. A path readable in the deployed filesystem to the trusted CA certificate; a workstation path will not work on Vercel. |
+| `SUPABASE_DB_CA_PEM` | Server only. Trusted CA PEM contents for hosted SQL; takes precedence over `SUPABASE_DB_CA_FILE`. Store as a Vercel secret, without disabling certificate verification. |
 
 The citizen prototype routes and `/login` render without these variables. Sign-in
-and server session routes fail closed until the five names above are set.
+and server session routes fail closed until their Supabase configuration is set.
 `SUPABASE_SECRET_KEY` must not appear in client bundles.
+
+B01 login/session uses the Supabase SDK and RPC; successful login does **not**
+prove the B02–B05 PostgreSQL connection works. Those routes call
+`scripts/database.ts` at runtime and require `SUPABASE_STRING`. Remote SQL uses
+certificate and hostname verification; configure a trusted CA file if the host
+does not trust the chain. Never disable TLS verification. After configuring the
+host, verify an authenticated Officer queue and Admin dispatch request, plus
+API-key rejection and a full synthetic Case workflow. Apply migrations through
+the trusted development/setup connection before serving the application.
 
 ### Not required on Vercel
 
 | Name | Why it stays off the hosted app |
 | --- | --- |
-| `SUPABASE_STRING` | PostgreSQL URI for local migrate/seed/tests. |
-| `SUPABASE_DB_CA_FILE` | Path to a local CA file. |
 | `DEMO_CITIZEN_A_PASSWORD` | Synthetic password for setup and live tests. |
 | `DEMO_CITIZEN_B_PASSWORD` | Synthetic password for setup and live tests. |
 | `DEMO_HELPER_PASSWORD` | Synthetic password for setup and live tests. |
@@ -87,7 +98,7 @@ copying them into `NEXT_PUBLIC_` variables.
 
 | Path | Expected heading |
 | --- | --- |
-| `/` | Create Next App home (`page.tsx`) |
+| `/` | Redirects to the SANAD citizen entry at `/citizen` (final-integration change; requires deployment). |
 | `/login` | SANAD sign in |
 | `/citizen` | کیا یہ امدادی پیغام واقعی درست ہے؟ |
 | `/citizen/verify` | نوٹس یا پیغام یہاں چسپاں کریں |

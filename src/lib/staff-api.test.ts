@@ -99,8 +99,7 @@ test("live mode exposes fetch failures and never substitutes fixture data", asyn
   }
 });
 
-test("status labels distinguish fixture and live configuration", () => {
-  assert.match(getStaffModeLabel("fixture"), /Fixture demo/);
+test("live staff status label identifies server-backed configuration", () => {
   assert.match(getStaffModeLabel("live"), /Live configuration/);
 });
 
@@ -108,7 +107,6 @@ test("live resolution stays disabled until an Assessment ID is obtained", () => 
   assert.equal(isLiveResolutionAvailable("live", null), false);
   assert.equal(isLiveResolutionAvailable("live", ""), false);
   assert.equal(isLiveResolutionAvailable("live", "70000000-0000-4000-8000-000000000001"), true);
-  assert.equal(isLiveResolutionAvailable("fixture", null), true);
 });
 
 test("live resolution stays disabled when evidence has changed after Assessment creation", () => {

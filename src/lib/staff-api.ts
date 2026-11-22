@@ -15,7 +15,7 @@ import {
 } from "@/contracts/v1";
 import { CaseEventSchema, EvidenceItemSchema } from "@/lib/case-contract";
 
-export type StaffApiMode = "fixture" | "live";
+export type StaffApiMode = "live";
 
 const OfficerQueueItemSchema = z.strictObject({
   caseId: IdSchema,
@@ -188,18 +188,17 @@ export function clearStaffMutationState(keys: Map<string, IdempotencyEntry>) {
 }
 
 export function getStaffApiMode(): StaffApiMode {
-  if (process.env.NEXT_PUBLIC_SANAD_STAFF_MODE === "fixture") return "fixture";
   return "live";
 }
 
 export function getStaffModeLabel(mode: StaffApiMode) {
   return mode === "live"
     ? "Live configuration: server reachability and permissions are verified per request"
-    : "Fixture demo: synthetic data and mutations";
+    : "Live configuration: server reachability and permissions are verified per request";
 }
 
 export function isLiveResolutionAvailable(mode: StaffApiMode, assessmentId: string | null) {
-  return mode === "fixture" ? true : assessmentId !== null && assessmentId.trim().length > 0;
+  return mode === "live" && assessmentId !== null && assessmentId.trim().length > 0;
 }
 
 export function isLiveAssessmentFresh(
@@ -260,7 +259,6 @@ export function createStaffApi(keys = staffMutationKeys, mode = getStaffApiMode(
   return {
     mode,
     getOfficerQueue: async (cursor?: string, status?: string, limit?: number, sort?: "priority" | "confidence" | "oldest") => {
-      if (mode === "fixture") return null;
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
       if (status) params.set("status", status);
@@ -269,7 +267,6 @@ export function createStaffApi(keys = staffMutationKeys, mode = getStaffApiMode(
       return parsers.officerQueue.parse(await request(`cases${params.size ? `?${params}` : ""}`, { method: "GET" }));
     },
     getDispatch: async (cursor?: string, status?: string, limit?: number, sort?: "priority" | "oldest") => {
-      if (mode === "fixture") return null;
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
       if (status) params.set("status", status);
@@ -278,58 +275,48 @@ export function createStaffApi(keys = staffMutationKeys, mode = getStaffApiMode(
       return parsers.dispatch.parse(await request(`admin/dispatch${params.size ? `?${params}` : ""}`, { method: "GET" }));
     },
     getStaffOfficers: async (departmentId: string) => {
-      if (mode === "fixture") return null;
       const params = new URLSearchParams({ departmentId });
       return parsers.staffOfficers.parse(await request(`admin/officers?${params}`, { method: "GET" })).data;
     },
     getCase: async (caseId: string) => {
-      if (mode === "fixture") return null;
       return SuccessSchema(CaseSchema).parse(await request(`cases/${caseId}`, { method: "GET" })).data;
     },
     getEvidence: async (caseId: string, cursor?: string, limit?: number) => {
-      if (mode === "fixture") return null;
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
       if (limit !== undefined) params.set("limit", String(limit));
       return parsers.evidence.parse(await request(`cases/${caseId}/evidence${params.size ? `?${params}` : ""}`, { method: "GET" })).data;
     },
     getDecisions: async (caseId: string, cursor?: string, limit?: number) => {
-      if (mode === "fixture") return null;
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
       if (limit !== undefined) params.set("limit", String(limit));
       return parsers.decisions.parse(await request(`cases/${caseId}/decisions${params.size ? `?${params}` : ""}`, { method: "GET" })).data;
     },
     getProgramInputs: async (caseId: string, cursor?: string, limit?: number) => {
-      if (mode === "fixture") return null;
       const params = new URLSearchParams();
       if (cursor) params.set("cursor", cursor);
       if (limit !== undefined) params.set("limit", String(limit));
       return parsers.programInputs.parse(await request(`cases/${caseId}/program-inputs${params.size ? `?${params}` : ""}`, { method: "GET" })).data;
     },
     getHistory: async (caseId: string) => {
-      if (mode === "fixture") return null;
       return parsers.history.parse(await request(`cases/${caseId}/history`, { method: "GET" })).data;
     },
     getRule: async (programRef = "program_demo") => {
-      if (mode === "fixture") return null;
       const params = new URLSearchParams({ programRef });
       return parsers.rule.parse(await request(`rules/current?${params}`, { method: "GET" })).data;
     },
     assignCase: async (caseId: string, body: { expectedVersion: number; departmentId: string; officerId: string; reason: string }) => {
-      if (mode === "fixture") throw new StaffApiError("SERVICE_UNAVAILABLE", "staff.fixture.mutations_disabled", false);
       const payload = await request(`cases/${caseId}/assign`, { method: "POST", body: JSON.stringify(body) }, `assign:${caseId}`, keys);
       markMutationSucceeded(keys, `assign:${caseId}`, body);
       return parsers.dispatchMutation.parse(payload).data;
     },
     setPriority: async (caseId: string, body: { expectedVersion: number; departmentId: string; priority: "NORMAL" | "HIGH"; reason: string }) => {
-      if (mode === "fixture") throw new StaffApiError("SERVICE_UNAVAILABLE", "staff.fixture.mutations_disabled", false);
       const payload = await request(`cases/${caseId}/priority`, { method: "POST", body: JSON.stringify(body) }, `priority:${caseId}`, keys);
       markMutationSucceeded(keys, `priority:${caseId}`, body);
       return parsers.dispatchMutation.parse(payload).data;
     },
     mutate: async (action: string, caseId: string, body: unknown) => {
-      if (mode === "fixture") throw new StaffApiError("SERVICE_UNAVAILABLE", "staff.fixture.mutations_disabled", false);
       const payload = await request(`cases/${caseId}/${action}`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -338,7 +325,6 @@ export function createStaffApi(keys = staffMutationKeys, mode = getStaffApiMode(
       return action === "resolve" ? parsers.resolution.parse(payload).data : parsers.caseAction.parse(payload).data;
     },
     createAssessment: async (caseId: string, body: { expectedEvidenceVersion: number; includeAi: boolean }) => {
-      if (mode === "fixture") return null;
       const payload = await request(`cases/${caseId}/assessments`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -347,7 +333,6 @@ export function createStaffApi(keys = staffMutationKeys, mode = getStaffApiMode(
       return parsers.assessment.parse(payload).data;
     },
     publishRule: async (body: { programRef: "program_demo"; expectedCurrentVersion: number | null; parameters: z.infer<typeof RuleParametersSchema> }) => {
-      if (mode === "fixture") throw new StaffApiError("SERVICE_UNAVAILABLE", "staff.fixture.mutations_disabled", false);
       const payload = await request("rules/publish", {
         method: "POST",
         body: JSON.stringify(body),

@@ -48,15 +48,20 @@ test("B01 live Supabase/PostgreSQL/HTTP acceptance", async (t) => {
           body: JSON.stringify({ email: account.email, password: process.env["DEMO_" + account.name + "_PASSWORD"] }),
         });
         assert.equal(response.status, 200, account.name + " login");
+        // Retain the session for cleanup even if a later identity assertion fails.
+        const cookie = response.headers.get("set-cookie") ?? "";
+        cookies.set(account.name, cookie.split(";")[0]);
         const { data } = SessionResponseSchema.parse(await response.json());
         assert.equal(data.principal.id, account.id);
         assert.deepEqual(data.principal.roles, [account.role]);
         assert.equal(data.principal.active, true);
-        assert.equal(data.departmentIds.length, ["OFFICER", "ADMIN"].includes(account.role) ? 1 : 0);
-        const cookie = response.headers.get("set-cookie") ?? "";
+        const memberships = await db.query("select department_id from public.department_memberships where profile_id=$1 order by department_id", [account.id]);
+        assert.deepEqual([...data.departmentIds].sort(), memberships.rows.map(row => String(row.department_id)).sort());
+        if (["OFFICER", "ADMIN"].includes(account.role)) {
+          assert.ok(data.departmentIds.includes("d0000000-0000-4000-8000-000000000001"), "Approved seeded department is present");
+        } else assert.deepEqual(data.departmentIds, []);
         assert.match(cookie, /HttpOnly/);
         assert.match(cookie, /SameSite=strict/);
-        cookies.set(account.name, cookie.split(";")[0]);
         const protectedResponse = await request("/api/v1/session", cookies.get(account.name));
         assert.equal(protectedResponse.status, 200);
         assert.deepEqual(SessionResponseSchema.parse(await protectedResponse.json()).data, data);

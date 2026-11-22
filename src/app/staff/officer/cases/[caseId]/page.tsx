@@ -50,11 +50,6 @@ export default function OfficerCasePage() {
       api.getProgramInputs(caseId),
     ]).then(([detail, evidenceResult, decisionResult, historyResult, programInputResult]) => {
       if (!active) return;
-      if (api.mode === "fixture") {
-        setError("Fixture mode is unavailable in this staff view.");
-        setLoading(false);
-        return;
-      }
       setCaseItem(detail);
       setEvidence(evidenceResult?.items ?? []);
       setDecisions(decisionResult?.items ?? []);
@@ -83,23 +78,15 @@ export default function OfficerCasePage() {
     setMessage("");
     try {
       const api = createStaffApi();
-      if (api.mode === "fixture") {
-        const status = action === "start-review" ? "UNDER_REVIEW"
-          : action === "request-evidence" ? "NEEDS_EVIDENCE"
-          : action === "close" ? "CLOSED" : caseItem.status;
-        setCaseItem({ ...caseItem, status, version: caseItem.version + 1 });
-        setMessage(`Fixture-only ${action} applied. No live workflow mutation occurred.`);
-      } else {
-        const body = action === "start-review" || action === "close"
-          ? { expectedVersion: caseItem.version }
-          : { expectedVersion: caseItem.version, reason };
-        const result = await api.mutate(action, caseId, body);
-        setCaseItem(result.case);
-        setAssessmentId("");
-        setAssessmentEvidenceVersion(null);
-        setAssessment(null);
-        setMessage(`${action} completed.`);
-      }
+      const body = action === "start-review" || action === "close"
+        ? { expectedVersion: caseItem.version }
+        : { expectedVersion: caseItem.version, reason };
+      const result = await api.mutate(action, caseId, body);
+      setCaseItem(result.case);
+      setAssessmentId("");
+      setAssessmentEvidenceVersion(null);
+      setAssessment(null);
+      setMessage(`${action} completed.`);
     } catch (cause) {
       setError(cause instanceof StaffApiError ? `${cause.code}: ${cause.messageKey}` : cause instanceof Error ? cause.message : "Workflow action failed");
     } finally {
@@ -114,22 +101,15 @@ export default function OfficerCasePage() {
     setMessage("");
     try {
       const api = createStaffApi();
-      if (api.mode === "fixture") {
-        setAssessmentId("70000000-0000-4000-8000-000000000001");
-        setAssessmentEvidenceVersion(caseItem.evidenceVersion);
-        setAssessment(null);
-        setMessage("Fixture demo: assessment ID selected for demonstration only.");
-      } else {
-        const assessment = await api.createAssessment(caseId, {
-          expectedEvidenceVersion: caseItem.evidenceVersion,
-          includeAi: false,
-        });
-        if (!assessment) throw new Error("ASSESSMENT_UNAVAILABLE: no authorized Assessment route result");
-        setAssessmentId(assessment.id);
-        setAssessmentEvidenceVersion(assessment.evidenceVersion);
-        setAssessment(assessment);
-        setMessage(`Authorized Assessment ${assessment.id.slice(0, 8)} created for evidence version ${assessment.evidenceVersion}.`);
-      }
+      const assessment = await api.createAssessment(caseId, {
+        expectedEvidenceVersion: caseItem.evidenceVersion,
+        includeAi: false,
+      });
+      if (!assessment) throw new Error("ASSESSMENT_UNAVAILABLE: no authorized Assessment route result");
+      setAssessmentId(assessment.id);
+      setAssessmentEvidenceVersion(assessment.evidenceVersion);
+      setAssessment(assessment);
+      setMessage(`Authorized Assessment ${assessment.id.slice(0, 8)} created for evidence version ${assessment.evidenceVersion}.`);
     } catch (cause) {
       setError(cause instanceof StaffApiError ? `${cause.code}: ${cause.messageKey}` : cause instanceof Error ? cause.message : "Assessment creation failed");
     } finally {
@@ -154,14 +134,9 @@ export default function OfficerCasePage() {
     setMessage("");
     try {
       const api = createStaffApi();
-      if (api.mode === "fixture") {
-        setCaseItem({ ...caseItem, status: "RESOLVED", version: caseItem.version + 1 });
-        setMessage("Fixture-only resolution applied. No live disposition or payment approval occurred.");
-      } else {
-        const result = await api.mutate("resolve", caseId, { expectedVersion: caseItem.version, reviewedAssessmentId: assessmentId, reason });
-        setCaseItem(result.case);
-        setMessage("Case resolved.");
-      }
+      const result = await api.mutate("resolve", caseId, { expectedVersion: caseItem.version, reviewedAssessmentId: assessmentId, reason });
+      setCaseItem(result.case);
+      setMessage("Case resolved.");
     } catch (cause) {
       setError(cause instanceof StaffApiError ? `${cause.code}: ${cause.messageKey}` : cause instanceof Error ? cause.message : "Resolution failed");
     } finally {
@@ -232,20 +207,12 @@ export default function OfficerCasePage() {
                 <label className="block text-sm">Reason<textarea className="mt-1 min-h-20 w-full rounded border p-2" maxLength={2000} value={reason} onChange={(event) => setReason(event.target.value)} /></label>
                 <button disabled={busy} className="w-full rounded border px-3 py-2 text-sm" onClick={() => transition("request-evidence")}>Request evidence</button>
                 <button disabled={busy} className="mt-2 w-full rounded border px-3 py-2 text-sm" onClick={() => transition("escalate")}>Escalate</button>
-                {getStaffApiMode() === "fixture" ? (
-                  <button disabled={busy} className="mt-3 w-full rounded border px-3 py-2 text-sm" onClick={createReviewedAssessment}>Use fixture assessment</button>
-                ) : (
-                  <button disabled={busy} className="mt-3 w-full rounded border px-3 py-2 text-sm" onClick={createReviewedAssessment}>Create reviewed Assessment</button>
-                )}
+                <button disabled={busy} className="mt-3 w-full rounded border px-3 py-2 text-sm" onClick={createReviewedAssessment}>Create reviewed Assessment</button>
                 {assessmentId && <p className="mt-2 text-xs text-slate-600">Reviewed Assessment: {assessmentId}</p>}
-                {getStaffApiMode() === "fixture" ? (
-                  <button disabled={busy || !assessmentId} className="mt-2 w-full rounded bg-slate-900 px-3 py-2 text-sm text-white" onClick={resolveCase}>Resolve fixture case</button>
-                ) : (
-                  <div>
-                    <button disabled={busy || !assessmentId} className="mt-2 w-full rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={resolveCase}>Resolve with Assessment</button>
-                    {!assessmentId && <p className="mt-2 text-xs text-slate-600">Live resolution is disabled until an authorized Assessment is created for the current evidence version.</p>}
-                  </div>
-                )}
+                <div>
+                  <button disabled={busy || !assessmentId} className="mt-2 w-full rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={resolveCase}>Resolve with Assessment</button>
+                  {!assessmentId && <p className="mt-2 text-xs text-slate-600">Live resolution is disabled until an authorized Assessment is created for the current evidence version.</p>}
+                </div>
               </>
             )}
             {caseItem.status === "RESOLVED" && <button disabled={busy} className="w-full rounded bg-slate-900 px-3 py-2 text-sm text-white" onClick={() => transition("close")}>Close resolved case</button>}

@@ -4,18 +4,18 @@ import { z } from "zod";
 import { CaseSchema, IdSchema, type ConsentAction } from "@/contracts/v1";
 import { AuthFailure } from "@/backend/auth/principal";
 import { privateJson } from "@/backend/auth/session";
-import { type Dependencies, type Transaction } from "@/backend/authorization/transaction";
+import { type Transaction } from "@/backend/authorization/transaction";
 import { loadAuthorization, reconcileConsentStatus, withAuthorizedCase } from "@/backend/authorization/service";
-import { authorize, type Permission, type PolicyContext } from "@/backend/authorization/policy";
+import { authorize, type Permission } from "@/backend/authorization/policy";
 import { errorJson, readBody } from "@/backend/consent/http";
 import { addEvidence, evidenceRecord } from "./evidence";
-import { AddEvidenceRequestSchema, SaveDraftRequestSchema, SubmitCaseRequestSchema, CreateAssessmentRequestSchema } from "@/lib/case-contract";
-import { SANAD_AI_PROCESSOR_ID } from "@/lib/consent-contract";
+import { AddEvidenceRequestSchema, SaveDraftRequestSchema, SubmitCaseRequestSchema } from "@/lib/case-contract";
 import { replayable } from "./idempotency";
 import { caseHistory } from "./history";
 import { draftSnapshot, draftRecord, saveDraft, requireUnsubmitted } from "./drafts";
 import { submitCase } from "./submission";
-import { assessmentRecord, createAssessment, passportRecord } from "./assessments";
+import { assessmentRecord, passportRecord } from "./assessments";
+import { assessCase, type AssessmentDependencies } from "./assessment-operation";
 
 export async function caseRecord(tx: Transaction, caseId: string) {
   const { rows: [row] } = await tx.db.query("select * from public.cases where id=$1", [caseId]);
@@ -38,11 +38,6 @@ async function checkPermission(tx: Transaction, caseId: string, action: ConsentA
   return decision;
 }
 
-function mayProcessAi(context: PolicyContext) {
-  return ["synthetic_helper_assistance", "synthetic_department_review", "synthetic_audit_review"].some((purpose) =>
-    authorize(context, { action: "PROCESS_AI", purpose, processorId: SANAD_AI_PROCESSOR_ID }).allowed);
-}
-
 export type CaseOperation = "detail" | "passport" | "evidence-add" | "history" | "draft-read" | "draft-save" | "submit" | "assess" | "trace";
 const operations: Record<CaseOperation, { action: ConsentAction; audit: string; status: number }> = {
   detail: { action: "READ_CASE", audit: "CASE_READ", status: 200 },
@@ -55,15 +50,15 @@ const operations: Record<CaseOperation, { action: ConsentAction; audit: string; 
   assess: { action: "REQUEST_ASSESSMENT", audit: "ASSESSMENT_CREATED", status: 201 },
   trace: { action: "READ_EVIDENCE", audit: "ASSESSMENT_READ", status: 200 },
 };
-export async function handleCase(request: NextRequest, operation: CaseOperation, caseId: string, dependencies: Dependencies = {}, targetAssessmentId?: string) {
+export async function handleCase(request: NextRequest, operation: CaseOperation, caseId: string, dependencies: AssessmentDependencies = {}, targetAssessmentId?: string) {
   const requestId = crypto.randomUUID();
   let prepared: unknown;
   let key: string;
-  let requireAi = false;
   const { action, audit: event, status } = operations[operation];
   try {
+    if (operation === "assess") return privateJson({ data: await assessCase(request, caseId, requestId, dependencies), requestId }, status);
     const data = await withAuthorizedCase(request, { caseId: () => caseId, action, purpose: "synthetic_helper_assistance",
-      alternativePurposes: ["synthetic_department_review", "synthetic_audit_review"], additionalActions: operation === "assess" ? ["READ_EVIDENCE"] : [] }, async (tx, context) => {
+      alternativePurposes: ["synthetic_department_review", "synthetic_audit_review"] }, async (tx) => {
       let result;
       if (operation === "draft-read") {
         await requireUnsubmitted(tx, caseId);
@@ -78,12 +73,6 @@ export async function handleCase(request: NextRequest, operation: CaseOperation,
         }
         const snapshot = await replayable(tx, caseId, operation, key, prepared, () => saveDraft(tx, caseId, input));
         result = await draftRecord(tx, snapshot);
-      } else if (operation === "assess") {
-        const input = CreateAssessmentRequestSchema.parse(prepared);
-        const aiAuthorized = input.includeAi && mayProcessAi(context);
-        const saved = await replayable(tx, caseId, operation, key, prepared, () => createAssessment(tx, caseId, input.expectedEvidenceVersion, aiAuthorized));
-        result = await assessmentRecord(tx, caseId, saved.assessmentId);
-        requireAi = input.includeAi && result.ai.status !== "NOT_AUTHORIZED";
       } else if (operation === "submit") {
         const input = SubmitCaseRequestSchema.parse(prepared);
         result = await replayable(tx, caseId, operation, key, prepared, async () => {
@@ -104,10 +93,8 @@ export async function handleCase(request: NextRequest, operation: CaseOperation,
         result = operation === "trace" ? await assessmentRecord(tx, caseId, assessmentId) : await passportRecord(tx, caseId, assessmentId);
       } else result = await caseRecord(tx, caseId);
       return result;
-    }, dependencies, { requestId, auditAction: event, recheck: (context) => {
-      if (requireAi && !mayProcessAi(context)) throw new AuthFailure("CONSENT_REQUIRED");
-    }, prepare: async () => {
-      const schema = operation === "evidence-add" ? AddEvidenceRequestSchema : operation === "draft-save" ? SaveDraftRequestSchema : operation === "submit" ? SubmitCaseRequestSchema : operation === "assess" ? CreateAssessmentRequestSchema : null;
+    }, dependencies, { requestId, auditAction: event, prepare: async () => {
+      const schema = operation === "evidence-add" ? AddEvidenceRequestSchema : operation === "draft-save" ? SaveDraftRequestSchema : operation === "submit" ? SubmitCaseRequestSchema : null;
       if (!schema) return;
       const parsed = schema.safeParse(await readBody(request, 65536));
       if (!parsed.success) throw new AuthFailure("VALIDATION_FAILED");

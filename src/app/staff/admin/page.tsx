@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createStaffApi, getStaffApiMode } from "@/lib/staff-api";
+import { createStaffApi } from "@/lib/staff-api";
 import type { DispatchItem } from "@/lib/staff-api";
 import { session } from "@/lib/auth/browser";
 import type { StaffOfficer } from "@/lib/staff-api";
@@ -66,10 +66,6 @@ export default function AdminPage() {
     setSelected(item);
     setOfficerId("");
     setError("");
-    if (getStaffApiMode() === "fixture") {
-      setOfficers([]);
-      return;
-    }
     try {
       const result = await createStaffApi().getStaffOfficers(item.departmentId);
       setOfficers(result?.items ?? []);
@@ -84,15 +80,10 @@ export default function AdminPage() {
     setMessage("");
     try {
       const api = createStaffApi();
-      if (api.mode === "fixture") {
-        setCurrentVersion((version) => (version ?? 0) + 1);
-        setMessage("Fixture-only synthetic policy published locally. No live policy changed.");
-      } else {
-        const published = await api.publishRule({ programRef: "program_demo", expectedCurrentVersion: currentVersion, parameters });
-        setParameters(published.rule.parameters);
-        setCurrentVersion(published.rule.version);
-        setMessage(`Synthetic policy published as rule version ${published.rule.version}.`);
-      }
+      const published = await api.publishRule({ programRef: "program_demo", expectedCurrentVersion: currentVersion, parameters });
+      setParameters(published.rule.parameters);
+      setCurrentVersion(published.rule.version);
+      setMessage(`Synthetic policy published as rule version ${published.rule.version}.`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Policy publication failed");
     }
