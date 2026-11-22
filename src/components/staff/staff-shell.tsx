@@ -78,15 +78,9 @@ export default function StaffShell({ children }: { children: ReactNode }) {
         </nav>
       </aside>
       <main className="min-w-0 p-4 md:p-6">
-        {apiMode === "fixture" ? (
-          <div className="mb-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-            Fixture demo mode: all queue data and mutations are synthetic demonstrations.
-          </div>
-        ) : (
-          <div className="mb-4 rounded border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-950">
-            {getStaffModeLabel("live")}. No live result is assumed until a server confirmation is received.
-          </div>
-        )}
+        <div className="mb-4 rounded border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+          {getStaffModeLabel(apiMode)}. No live result is assumed until a server confirmation is received.
+        </div>
         {error && <div className="mb-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900" role="alert">{error}</div>}
         {!error && children}
       </main>

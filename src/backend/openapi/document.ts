@@ -22,6 +22,7 @@ export function openApiDocument() {
       parameter("status", { type: "string", enum: ["SUBMITTED", "UNDER_REVIEW", "NEEDS_EVIDENCE", "PENDING_CONSENT", "RESOLVED", "CLOSED"] });
     }
     if (operation.id === "auditMetadata") parameter("caseId", { type: "string", format: "uuid" }, true);
+    if (operation.id === "staffOfficers") parameter("departmentId", { type: "string", format: "uuid" }, true);
     if (operation.id === "currentRule") parameter("programRef", { type: "string", enum: ["program_demo"] });
     if (operation.id === "evidencePassport") parameter("assessmentId", { type: "string", format: "uuid" });
     if (operation.request && operation.id !== "login") parameters.push({ name: "Idempotency-Key", in: "header", required: true, schema: { type: "string", pattern: "^[A-Za-z0-9_-]{1,128}$" }, description: "Retain for identical retries; changed validated payload returns IDEMPOTENCY_CONFLICT. Current authorization is rechecked before replay." });

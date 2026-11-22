@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createStaffApi, getStaffApiMode } from "@/lib/staff-api";
+import { createStaffApi } from "@/lib/staff-api";
 import type { DispatchItem } from "@/lib/staff-api";
-import { fixtureDispatch, fixtureOfficerIds } from "@/lib/staff-fixtures";
 import { session } from "@/lib/auth/browser";
+import type { StaffOfficer } from "@/lib/staff-api";
 
 export default function AdminPage() {
   const [items, setItems] = useState<DispatchItem[]>([]);
@@ -17,18 +17,15 @@ export default function AdminPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
+  const [officers, setOfficers] = useState<StaffOfficer[]>([]);
 
   useEffect(() => {
     let active = true;
     const api = createStaffApi();
     Promise.all([api.mode === "live" ? session() : Promise.resolve(null), api.getDispatch(), api.getRule()]).then(([context, dispatch, rule]) => {
       if (!active) return;
-      if (api.mode === "fixture") {
-        setItems(fixtureDispatch);
-      } else {
-        setItems(dispatch?.data.items ?? []);
-        setDepartmentIds(context?.departmentIds ?? []);
-      }
+      setItems(dispatch?.data.items ?? []);
+      setDepartmentIds(context?.departmentIds ?? []);
       if (rule) {
         setParameters(rule.rule.parameters);
         setCurrentVersion(rule.rule.version);
@@ -39,7 +36,7 @@ export default function AdminPage() {
   }, []);
 
   async function assign() {
-    if (!selected || reason.trim().length === 0) {
+    if (!selected || !officerId || reason.trim().length === 0) {
       setError("Choose an officer and provide a meaningful reason.");
       return;
     }
@@ -47,23 +44,34 @@ export default function AdminPage() {
     setMessage("");
     try {
       const api = createStaffApi();
-      if (api.mode === "fixture") {
-        if (!officerId) {
-          setError("Choose a fixture officer.");
-          return;
-        }
-        setItems((current) => current.map((item) => item.caseId === selected.caseId ? { ...item, assignedOfficerId: officerId, version: item.version + 1 } : item));
-        setMessage("Fixture assignment applied. No live authorization or dispatch occurred.");
-      } else {
-        if (!departmentIds.includes(selected.departmentId)) {
-          throw new Error("ASSIGNMENT_UNAVAILABLE: The session has no authorized department membership for this dispatch record.");
-        }
-        throw new Error("ASSIGNMENT_UNAVAILABLE: No live officer-directory endpoint is available. Backend dependency: add an authorized staff-directory DTO/route before live assignment.");
+      if (!departmentIds.includes(selected.departmentId)) {
+        throw new Error("ASSIGNMENT_UNAVAILABLE: The session has no authorized department membership for this dispatch record.");
       }
+      const updated = await api.assignCase(selected.caseId, {
+        expectedVersion: selected.version,
+        departmentId: selected.departmentId,
+        officerId,
+        reason,
+      });
+      setItems((current) => current.map((item) => item.caseId === selected.caseId ? updated : item));
+      setMessage("Case assigned.");
       setSelected(null);
       setReason("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Assignment failed");
+    }
+  }
+
+  async function openAssignment(item: DispatchItem) {
+    setSelected(item);
+    setOfficerId("");
+    setError("");
+    try {
+      const result = await createStaffApi().getStaffOfficers(item.departmentId);
+      setOfficers(result?.items ?? []);
+    } catch (cause) {
+      setOfficers([]);
+      setError(cause instanceof Error ? cause.message : "Officer directory unavailable");
     }
   }
 
@@ -72,13 +80,10 @@ export default function AdminPage() {
     setMessage("");
     try {
       const api = createStaffApi();
-      if (api.mode === "fixture") {
-        setCurrentVersion((version) => (version ?? 0) + 1);
-        setMessage("Fixture-only synthetic policy published locally. No live policy changed.");
-      } else {
-        await api.publishRule({ programRef: "program_demo", expectedCurrentVersion: currentVersion, parameters });
-        setMessage("Synthetic policy published.");
-      }
+      const published = await api.publishRule({ programRef: "program_demo", expectedCurrentVersion: currentVersion, parameters });
+      setParameters(published.rule.parameters);
+      setCurrentVersion(published.rule.version);
+      setMessage(`Synthetic policy published as rule version ${published.rule.version}.`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Policy publication failed");
     }
@@ -99,7 +104,7 @@ export default function AdminPage() {
                 <tr key={item.caseId} className="border-t border-slate-100">
                   <td className="px-4 py-3">{item.caseId.slice(0, 8)}</td><td className="px-4 py-3">{item.status}</td><td className="px-4 py-3">{item.priority}</td>
                   <td className="px-4 py-3">{item.assignedOfficerId?.slice(0, 8) ?? "Unassigned"}</td><td className="px-4 py-3">{item.version}</td>
-                  <td className="px-4 py-3"><button className="rounded border border-slate-300 px-3 py-1.5" onClick={() => setSelected(item)}>Assign</button></td>
+                  <td className="px-4 py-3"><button className="rounded border border-slate-300 px-3 py-1.5" onClick={() => openAssignment(item)}>Assign</button></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -107,15 +112,24 @@ export default function AdminPage() {
           {selected && (
             <dialog open className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-lg rounded border border-slate-300 bg-white p-5 shadow-lg">
               <h2 className="text-lg font-semibold">Assign case {selected.caseId.slice(0, 8)}</h2>
-              {getStaffApiMode() === "fixture" ? (
-                <label className="mt-4 block text-sm">Fixture officer<select className="mt-1 block w-full rounded border p-2" value={officerId} onChange={(event) => setOfficerId(event.target.value)}><option value="">Select fixture officer</option>{fixtureOfficerIds.map((id) => <option key={id} value={id}>{id.slice(0, 8)}</option>)}</select></label>
-              ) : (
-                <div className="mt-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-                  Live assignment unavailable: no authorized officer-directory endpoint exists. Backend dependency: provide an authorized staff-directory route/DTO that returns officer IDs, then server-validate department membership and ASSIGN_CASE permission.
-                </div>
+              <label className="mt-4 block text-sm">
+                Authorized officer
+                <select
+                  className="mt-1 block w-full rounded border p-2"
+                  value={officerId}
+                  onChange={(event) => setOfficerId(event.target.value)}
+                >
+                  <option value="">Select officer</option>
+                  {officers.map((officer) => (
+                    <option key={officer.id} value={officer.id}>{officer.id.slice(0, 8)}</option>
+                  ))}
+                </select>
+              </label>
+              {officers.length === 0 && (
+                <p className="mt-2 text-sm text-slate-600">No authorized officers are available in this department.</p>
               )}
               <label className="mt-3 block text-sm">Reason<textarea className="mt-1 block min-h-24 w-full rounded border p-2" maxLength={2000} value={reason} onChange={(event) => setReason(event.target.value)} /></label>
-              <div className="mt-4 flex justify-end gap-2"><button className="rounded border px-3 py-2" onClick={() => setSelected(null)}>Cancel</button><button disabled={getStaffApiMode() === "live"} className="rounded bg-slate-900 px-3 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={assign}>Confirm assignment</button></div>
+              <div className="mt-4 flex justify-end gap-2"><button className="rounded border px-3 py-2" onClick={() => setSelected(null)}>Cancel</button><button disabled={officers.length === 0 || !officerId} className="rounded bg-slate-900 px-3 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50" onClick={assign}>Confirm assignment</button></div>
             </dialog>
           )}
           <section className="max-w-2xl rounded border border-slate-200 bg-white p-4">

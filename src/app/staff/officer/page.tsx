@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createStaffApi } from "@/lib/staff-api";
 import type { OfficerQueueItem } from "@/lib/staff-api";
-import { fixtureCases } from "@/lib/staff-fixtures";
 
 export default function OfficerQueuePage() {
   const [items, setItems] = useState<OfficerQueueItem[]>([]);
   const [status, setStatus] = useState("");
+  const [sort, setSort] = useState<"priority" | "confidence" | "oldest">("priority");
   const [cursor, setCursor] = useState("");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -17,15 +17,15 @@ export default function OfficerQueuePage() {
   useEffect(() => {
     let active = true;
     const api = createStaffApi();
-    api.getOfficerQueue(cursor || undefined, status || undefined).then((response) => {
+    api.getOfficerQueue(cursor || undefined, status || undefined, 20, sort).then((response) => {
       if (!active) return;
-      setItems(response?.data.items ?? fixtureCases.filter((item) => !status || item.status === status));
+      setItems(response?.data.items ?? []);
       setNextCursor(response?.data.nextCursor ?? null);
     }).catch((cause) => {
       if (active) setError(cause instanceof Error ? cause.message : "Queue unavailable");
     }).finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [status, cursor]);
+  }, [status, cursor, sort]);
 
   return (
     <div className="space-y-4">
@@ -38,6 +38,14 @@ export default function OfficerQueuePage() {
         <select className="mt-1 block rounded border border-slate-300 bg-white px-3 py-2" value={status} onChange={(event) => { setLoading(true); setCursor(""); setStatus(event.target.value); }}>
           <option value="">All statuses</option>
           {["SUBMITTED", "UNDER_REVIEW", "NEEDS_EVIDENCE", "PENDING_CONSENT", "RESOLVED", "CLOSED"].map((value) => <option key={value}>{value}</option>)}
+        </select>
+      </label>
+      <label className="block text-sm">
+        Sort
+        <select className="mt-1 block rounded border border-slate-300 bg-white px-3 py-2" value={sort} onChange={(event) => { setLoading(true); setCursor(""); setSort(event.target.value as "priority" | "confidence" | "oldest"); }}>
+          <option value="priority">Priority</option>
+          <option value="confidence">Confidence</option>
+          <option value="oldest">Oldest</option>
         </select>
       </label>
       {loading && <p role="status">Loading assigned cases...</p>}
