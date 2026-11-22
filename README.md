@@ -5,9 +5,9 @@ synthetic accounts and frontend/backend authentication integration, see
 
 Final release readiness and current blockers are recorded in
 [the integration and release audit](docs/final-release-audit.md). The public URL
-is <https://sanad-ai-nine.vercel.app/>; Citizen screens remain disconnected,
-staff defaults to labeled fixtures, and hosted SQL-backed workflows currently
-fail verification. This is a synthetic prototype, not an official service.
+is <https://sanad-ai-eta.vercel.app/>; Citizen screens remain disconnected,
+staff defaults to labeled fixtures, and hosted SQL-backed workflows failed
+verification. This is a synthetic prototype, not an official service.
 
 B02 centralized authorization, consent endpoint schemas, purpose disclosures and
 teammate integration examples are in [the RBAC and consent handoff](docs/b02-rbac-consent.md).
