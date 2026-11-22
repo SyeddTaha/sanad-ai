@@ -134,7 +134,11 @@ test("B03 live protected evidence persistence, concurrent writes and rollback", 
       for (const name of ["expiry", "revocation", "recipientMatch", "payment", "eligibility"] as const) assert.equal(original.findings[name].result, "UNKNOWN");
       assert.equal(original.ai.status, "NOT_AUTHORIZED");
       assert.ok(original.evidenceRefs.length >= 2);
-      assert.equal(original.ruleVersionId, "b3000000-0000-4000-8000-000000000001");
+      // B04 may have published a policy; B03's unavailable basis remains the pre-publication fallback.
+      const published = await call("/rules/current", "ADMIN");
+      assert.ok([200,404].includes(published.status));
+      const expectedRule = published.status === 200 ? (await published.json()).data.rule.id : "b3000000-0000-4000-8000-000000000001";
+      assert.equal(original.ruleVersionId, expectedRule);
       assert.deepEqual((await (await call(`/cases/${caseId}/assessments`, "CITIZEN_A", body, key)).json()).data, original);
       assert.equal((await call(`/cases/${caseId}/evidence`, "CITIZEN_A", evidenceBody(5, "Later synthetic evidence"))).status, 201);
       const latestResponse = await call(`/cases/${caseId}/assessments`, "CITIZEN_A", { expectedEvidenceVersion: 7, includeAi: false });

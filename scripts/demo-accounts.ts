@@ -48,7 +48,7 @@ export async function provisionDemoAccounts(admin: AuthAdmin, db: MigrationDatab
       }
       await db.query("insert into public.profiles(id,active) values($1,true) on conflict(id) do nothing", [user.id]);
       await db.query("insert into public.role_assignments(profile_id,role) values($1,$2::public.sanad_role) on conflict do nothing", [user.id, account.role]);
-      if (account.role === "OFFICER") {
+      if (account.role === "OFFICER" || account.role === "ADMIN") {
         await db.query("insert into public.department_memberships(profile_id,department_id) values($1,$2) on conflict do nothing", [user.id, departmentId]);
       }
       result.push({ name: account.name, id: user.id, email: account.email, role: account.role });

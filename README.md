@@ -10,6 +10,10 @@ B03 Case submission, immutable evidence/Assessment persistence, Passport endpoin
 and setup are in [the Case and Evidence Passport handoff](docs/b03-cases-evidence.md)
 and [verification evidence](docs/b03-verification.md).
 
+B04 officer queues, dispatch, immutable published rules and transactional Case
+Resolution APIs are documented in [the staff integration guide](docs/b04-officer-rules.md)
+and [verification evidence](docs/b04-verification.md). Frozen v1 exports are unchanged.
+
 ## Getting Started
 
 First, run the development server:

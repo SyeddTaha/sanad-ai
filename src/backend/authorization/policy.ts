@@ -2,7 +2,7 @@ import "server-only";
 import type { AuthorizationContext, ConsentAction, ErrorCode } from "@/contracts/v1";
 import { ConsentPurposes, OperationalPurposeSchema } from "@/lib/consent-contract";
 
-export type Permission = { action: ConsentAction; purpose: string; processorId?: string };
+export type Permission = { action: ConsentAction; purpose: string; processorId?: string; departmentId?: string };
 export type PolicyContext = AuthorizationContext & { assignedDepartmentId?: string | null };
 export type Decision = { allowed: boolean; code?: ErrorCode; authorizationRef?: string };
 const citizenActions: ConsentAction[] = ["READ_CASE", "READ_EVIDENCE", "WRITE_DRAFT", "ADD_EVIDENCE", "SUBMIT_CASE", "REQUEST_ASSESSMENT"];
@@ -35,7 +35,8 @@ export function authorize(context: PolicyContext, permission: Permission): Decis
       principal.roles.includes(policy.role) && (policy.actions as readonly string[]).includes(permission.action)) {
       return { allowed: true, authorizationRef: grant.id };
     }
-    if (grant.recipientType === "DEPARTMENT" && policy.recipientType === "DEPARTMENT" && context.departmentIds.includes(grant.recipientId)) {
+    if (grant.recipientType === "DEPARTMENT" && policy.recipientType === "DEPARTMENT" && context.departmentIds.includes(grant.recipientId) &&
+      (permission.departmentId === undefined || permission.departmentId === grant.recipientId)) {
       if (principal.roles.includes("OFFICER") && target.assignedOfficerId === principal.id &&
         context.assignedDepartmentId === grant.recipientId && permission.action !== "ASSIGN_CASE" &&
         (policy.actions as readonly string[]).includes(permission.action)) return { allowed: true, authorizationRef: grant.id };
