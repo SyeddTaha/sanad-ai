@@ -6,7 +6,7 @@ import { AuthFailure, providerFailure, requestToken, resolvePrincipal, SESSION_C
 import { auditedAuth, privateJson } from "./session";
 import type { AuthClients } from "./supabase";
 
-const Credentials = z.strictObject({ email: z.email().max(254), password: z.string().min(1).max(1024) });
+export const Credentials = z.strictObject({ email: z.email().max(254), password: z.string().min(1).max(1024) });
 
 function sameOrigin(request: NextRequest) {
   const origin = request.headers.get("origin");

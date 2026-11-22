@@ -6,7 +6,7 @@ import { authClients, type AuthClients } from "./supabase";
 import { SessionResponseSchema } from "@/lib/auth/session-contract";
 
 export function privateJson(data: unknown, status = 200) {
-  return NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store", Vary: "Cookie, Authorization" } });
+  return NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store", Vary: "Cookie, Authorization, X-API-Key" } });
 }
 
 function failureResponse(problem: AuthFailure, requestId: string) {

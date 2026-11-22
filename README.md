@@ -14,6 +14,11 @@ B04 officer queues, dispatch, immutable published rules and transactional Case
 Resolution APIs are documented in [the staff integration guide](docs/b04-officer-rules.md)
 and [verification evidence](docs/b04-verification.md). Frozen v1 exports are unchanged.
 
+B05 scoped service API keys, supported REST operations and the real curl demo
+are in [the public API handoff](docs/b05-public-api.md) and
+[verification evidence](docs/b05-verification.md). Machine-readable documentation
+is available at `GET /api/v1/openapi`.
+
 ## Getting Started
 
 First, run the development server:
