@@ -53,3 +53,22 @@ test("invalid API success payload is rejected instead of rendered", async () => 
     globalThis.fetch = previousFetch;
   }
 });
+
+test("anonymous auth response remains a sign-in state instead of a service failure", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(
+    JSON.stringify({
+      requestId: "00000000-0000-4000-8000-000000000001",
+      error: { code: "UNAUTHENTICATED", messageKey: "auth.unauthenticated", fieldErrors: [], retryable: false },
+    }),
+    { status: 401, headers: { "Content-Type": "application/json" } },
+  );
+  try {
+    await assert.rejects(
+      citizenApi.getSession(),
+      (error: unknown) => error instanceof CitizenApiError && error.code === "UNAUTHENTICATED",
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
