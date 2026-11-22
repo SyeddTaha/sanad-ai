@@ -29,7 +29,7 @@ export async function loadCaseAuthorizations(tx:Transaction,caseIds:string[]) {
     const caseId=String(reservation.id);
     const record=records.get(caseId);
     const context:PolicyContext={...tx.identity,target:{caseId,citizenId:String(reservation.citizen_id),assignedOfficerId:record?.assigned_officer_id as string ?? null},
-      assignedDepartmentId:record?.assigned_department_id as string ?? null,apiKeyScopes:null,
+      assignedDepartmentId:record?.assigned_department_id as string ?? null,apiKeyScopes:tx.apiKeyScopes ?? null,
       grants:grants.filter(grant=>grant.caseId===caseId),evaluatedAt:new Date(clock.time as string).toISOString()};
     return {context,record};
   });

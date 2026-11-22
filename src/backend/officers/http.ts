@@ -91,6 +91,7 @@ export async function handleStaffQueue(request: NextRequest, kind: "officer" | "
   const requestId = crypto.randomUUID();
   try {
     const data = await inAuthorizationTransaction(request, requestId, "STAFF_QUEUE_READ", async (tx) => {
+      if (tx.apiKeyScopes && !(kind === "officer" ? ["READ_CASE", "READ_EVIDENCE"] : ["ASSIGN_CASE"]).every((scope) => tx.apiKeyScopes!.includes(scope as "READ_CASE" | "READ_EVIDENCE" | "ASSIGN_CASE"))) throw new AuthFailure("INSUFFICIENT_SCOPE");
       if (!tx.identity.principal.roles.includes(kind === "officer" ? "OFFICER" : "ADMIN")) throw new AuthFailure("FORBIDDEN");
       const {cursor,limit}=pageOptions(request.nextUrl.searchParams);
       const sort=request.nextUrl.searchParams.get("sort") ?? "priority";
