@@ -19,12 +19,15 @@ export default function LoginPage() {
     setMessage("");
     setBusy(true);
     try {
-      const nextContext = await login(String(input.get("email")), String(input.get("password")));
-      setContext(nextContext);
+      const signedIn = await login(String(input.get("email")), String(input.get("password")));
+      setContext(signedIn);
       form.reset();
       setMessage("Signed in. Your session expires within one hour; sign in again after expiry.");
-      if (nextContext.principal.roles.includes("HELPER")) router.push("/helper");
-      else if (nextContext.principal.roles.includes("CITIZEN")) router.push("/citizen");
+      if (signedIn.principal.roles.includes("ADMIN")) router.replace("/staff/admin");
+      else if (signedIn.principal.roles.includes("OFFICER")) router.replace("/staff/officer");
+      else if (signedIn.principal.roles.includes("HELPER")) router.push("/helper");
+      else if (signedIn.principal.roles.includes("CITIZEN")) router.push("/citizen");
+      else setMessage("No supported SANAD workspace is assigned to this account. Contact your administrator for access.");
     } catch { setMessage("Sign-in failed. Check your credentials and active account, or try again later."); }
     finally { setBusy(false); }
   }
@@ -45,8 +48,9 @@ export default function LoginPage() {
     finally { setBusy(false); }
   }
 
-  return <main className="mx-auto w-full max-w-md space-y-5 p-8">
-    <h1 className="text-2xl font-semibold">SANAD sign in</h1>
+  return <main className="login-root mx-auto w-full max-w-md space-y-5 p-8">
+    <p className="login-kicker">SANAD · Secure access</p>
+    <h1 className="text-2xl font-semibold">Sign in to your account</h1>
     <p>Use your synthetic demo account.</p>
     <form onSubmit={submit} className="space-y-4">
       <label className="block">Email<input className="block w-full rounded border p-2" name="email" type="email" autoComplete="username" required maxLength={254} /></label>

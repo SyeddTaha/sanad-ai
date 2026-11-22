@@ -65,7 +65,7 @@ export default function StaffShell({ children }: { children: ReactNode }) {
   const apiMode = getStaffApiMode();
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950 lg:grid lg:grid-cols-[220px_1fr]">
+    <div className="staff-root min-h-screen bg-slate-50 text-slate-950 lg:grid lg:grid-cols-[220px_1fr]">
       <aside className="border-b border-slate-200 bg-white p-4 lg:min-h-screen lg:border-r lg:border-b-0">
         <div className="mb-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">SANAD staff</p>
