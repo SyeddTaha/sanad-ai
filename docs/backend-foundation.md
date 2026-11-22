@@ -83,9 +83,11 @@ table privileges revoked. There are no permissive policies, including for an
 account's own data. The service role has only the foundation select/insert
 grants, audit insertion, and session lookup; it cannot query private case/consent
 tables, update roles, or edit audit history. The server-only secret still has
-Auth administrative power and must never be exposed. PostgreSQL administrative
-connections are confined to scripts and opt-in integration tests. B02 must add
-reviewed operations/policies rather than a generic query endpoint.
+Auth administrative power and must never be exposed. B01 used PostgreSQL
+connections for setup and integration tests. The integrated B02–B05 services now
+also require a trusted server SQL connection for authorization transactions;
+see [runtime deployment configuration](deployment.md#runtime-names-for-the-hosted-app).
+Never expose this URI to the browser or provide a generic query endpoint.
 
 Audit rows contain request ID, opaque actor/target/authorization references,
 action, outcome and server time, with no credentials, raw evidence or input.
@@ -109,8 +111,8 @@ precedence. Values are never committed.
 | `SUPABASE_URL` | Supabase project's API URL |
 | `SUPABASE_PUBLISHABLE_KEY` | Project's public publishable key |
 | `SUPABASE_SECRET_KEY` | Project secret key, server/scripts only |
-| `SUPABASE_STRING` | Development database PostgreSQL URI, scripts/tests only; use session pooler if direct IPv6 is unavailable |
-| `SUPABASE_DB_CA_FILE` | Local path to trusted Supabase root CA if the system store does not trust the chain |
+| `SUPABASE_STRING` | Server and setup PostgreSQL URI; required by integrated B02–B05 runtime operations. Use a host-reachable session pooler if direct IPv6 is unavailable. |
+| `SUPABASE_DB_CA_FILE` | Trusted Supabase root CA path if the system store does not trust the chain. In deployment, the file must exist in the host filesystem; a workstation path is insufficient. |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Optional browser SDK config, same project; publishable key only, never secret/service-role |
 | `DEMO_CITIZEN_A_PASSWORD`, `DEMO_CITIZEN_B_PASSWORD`, `DEMO_HELPER_PASSWORD`, `DEMO_OFFICER_PASSWORD`, `DEMO_ADMIN_PASSWORD`, `DEMO_AUDITOR_PASSWORD` | Distinct synthetic demo passwords, 16–128 characters; setup/tests only |
 | `B01_BASE_URL` | Live suite's running Next.js origin, default `http://localhost:3100` |
@@ -139,7 +141,8 @@ npm run db:seed
 Seeding uses Auth Admin and one PostgreSQL transaction, checks a server-held
 `app_metadata.sanad_demo` marker, and refuses to adopt unrelated existing users.
 It provisions these synthetic accounts, active profiles, roles, and one synthetic
-officer department/membership:
+department. The integrated seed gives both the Officer and Admin membership for
+consent-scoped dispatch:
 
 | Email | Role | Password variable |
 | --- | --- | --- |

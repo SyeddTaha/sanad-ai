@@ -1,0 +1,27 @@
+{"base":"https://sanad-ai-eta.vercel.app","at":"2026-11-22T06:56:41.626Z"}
+{"check":"page /","status":"FAIL","reason":"SANAD content missing"}
+{"check":"page /login","status":"PASS","evidence":{"http":200,"finalPath":"/login"}}
+{"check":"page /citizen","status":"PASS","evidence":{"http":200,"finalPath":"/citizen"}}
+{"check":"page /citizen/verify","status":"PASS","evidence":{"http":200,"finalPath":"/citizen/verify"}}
+{"check":"page /citizen/results","status":"PASS","evidence":{"http":200,"finalPath":"/citizen/results"}}
+{"check":"page /citizen/dispute","status":"PASS","evidence":{"http":200,"finalPath":"/citizen/dispute"}}
+{"check":"page /citizen/case","status":"PASS","evidence":{"http":200,"finalPath":"/citizen/case"}}
+{"check":"page /citizen/consent","status":"PASS","evidence":{"http":200,"finalPath":"/citizen/consent"}}
+{"check":"public OpenAPI","status":"PASS","evidence":{"http":200,"paths":32}}
+{"check":"anonymous session denied","status":"PASS","evidence":{"http":401}}
+{"check":"invalid API key denied","status":"FAIL","reason":"HTTP 503\n\n503 !== 401\n"}
+{"check":"authenticated CITIZEN_A","status":"PASS","evidence":{"loginHttp":200,"sessionHttp":200,"roles":["CITIZEN"]}}
+{"check":"authenticated OFFICER","status":"FAIL","reason":"/api/v1/cases?limit=1 HTTP 503; code SERVICE_UNAVAILABLE\n\n503 !== 200\n"}
+{"check":"authenticated ADMIN","status":"FAIL","reason":"/api/v1/admin/dispatch?limit=1 HTTP 503; code SERVICE_UNAVAILABLE\n\n503 !== 200\n"}
+{"check":"authenticated HELPER","status":"PASS","evidence":{"loginHttp":200,"sessionHttp":200,"roles":["HELPER"]}}
+{"check":"authenticated AUDITOR","status":"PASS","evidence":{"loginHttp":200,"sessionHttp":200,"roles":["AUDITOR"]}}
+{"verdict":"FAIL","failures":4}
+{"check":"browser entry","url":"https://sanad-ai-eta.vercel.app/","heading":"To get started, edit the page.tsx file."}
+{"check":"citizen verification","status":"FAIL","message":"Not checked. The service is disconnected, so this text was not sent anywhere.","apiRequests":[]}
+{"check":"audio","voices":[],"unavailable":true}
+{"check":"local session clearing","empty":true}
+{"check":"citizen dispute","status":"FAIL","message":"Dispute not submitted. The service is disconnected, so no case was created.","apiRequests":[]}
+{"check":"citizen withdrawal","status":"FAIL","localPreview":true,"apiRequests":[]}
+{"check":"private browser storage","localKeys":[],"sessionKeys":[],"cacheNames":[],"databases":[]}
+{"check":"staff browser","fixture":true,"apiRequests":[{"method":"POST","path":"/api/v1/auth/login"},{"method":"GET","path":"/api/v1/session"}]}
+{"check":"browser errors","errors":[]}

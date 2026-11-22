@@ -57,7 +57,7 @@ test("AI is explicitly unavailable only with processing consent; consent withdra
   assert.equal(assessment.ai.status, "UNAVAILABLE");
   assert.equal(assessment.ai.runId, null);
   assert.equal(assessment.ai.modelVersion, null);
-  assert.equal(assessment.ai.failureCode, "provider_not_configured");
+  assert.equal(assessment.ai.failureCode, "message_unavailable");
   assert.equal((await handleCase(request(1), "trace", caseId, dependencies(1), assessment.id)).status, 200);
   await handleConsent(request(1, { expectedVersion: 1 }), "revoke", grant.id, dependencies(1));
   assert.equal((await handleCase(request(1, body, key), "assess", caseId, dependencies(1))).status, 403);
