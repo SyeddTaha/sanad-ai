@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createStaffApi } from "@/lib/staff-api";
 import type { OfficerQueueItem } from "@/lib/staff-api";
-import { fixtureCases } from "@/lib/staff-fixtures";
 
 export default function OfficerQueuePage() {
   const [items, setItems] = useState<OfficerQueueItem[]>([]);
@@ -20,7 +19,7 @@ export default function OfficerQueuePage() {
     const api = createStaffApi();
     api.getOfficerQueue(cursor || undefined, status || undefined, 20, sort).then((response) => {
       if (!active) return;
-      setItems(response?.data.items ?? fixtureCases.filter((item) => !status || item.status === status));
+      setItems(response?.data.items ?? []);
       setNextCursor(response?.data.nextCursor ?? null);
     }).catch((cause) => {
       if (active) setError(cause instanceof Error ? cause.message : "Queue unavailable");

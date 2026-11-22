@@ -8,7 +8,6 @@ import { z } from "zod";
 import type { Assessment } from "@/contracts/v1";
 import { EvidenceItemSchema } from "@/lib/case-contract";
 import { createStaffApi, getStaffApiMode, isLiveAssessmentFresh, isLiveResolutionAvailable, StaffApiError } from "@/lib/staff-api";
-import { fixtureCaseDetails, fixtureDecisions, fixtureEvidence } from "@/lib/staff-fixtures";
 
 type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
 type SyntheticProgramInput = {
@@ -52,18 +51,15 @@ export default function OfficerCasePage() {
     ]).then(([detail, evidenceResult, decisionResult, historyResult, programInputResult]) => {
       if (!active) return;
       if (api.mode === "fixture") {
-        setCaseItem(detail ?? fixtureCaseDetails[caseId] ?? null);
-        setEvidence(evidenceResult?.items ?? fixtureEvidence[caseId] ?? []);
-        setDecisions(decisionResult?.items ?? fixtureDecisions[caseId] ?? []);
-        setHistory(historyResult?.items ?? []);
-        setProgramInputs(programInputResult?.items ?? []);
-      } else {
-        setCaseItem(detail);
-        setEvidence(evidenceResult?.items ?? []);
-        setDecisions(decisionResult?.items ?? []);
-        setHistory(historyResult?.items ?? []);
-        setProgramInputs(programInputResult?.items ?? []);
+        setError("Fixture mode is unavailable in this staff view.");
+        setLoading(false);
+        return;
       }
+      setCaseItem(detail);
+      setEvidence(evidenceResult?.items ?? []);
+      setDecisions(decisionResult?.items ?? []);
+      setHistory(historyResult?.items ?? []);
+      setProgramInputs(programInputResult?.items ?? []);
       setAssessmentId("");
       setAssessmentEvidenceVersion(null);
       setAssessment(null);

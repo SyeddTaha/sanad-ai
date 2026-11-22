@@ -85,12 +85,15 @@ const PublishedRuleSchema = z.strictObject({
 });
 const RuleResponseSchema = SuccessSchema(PublishedRuleSchema);
 const AssessmentResponseSchema = SuccessSchema(AssessmentSchema);
+const StaffOfficerSchema = z.strictObject({ id: IdSchema });
+const StaffOfficersResponseSchema = SuccessSchema(z.strictObject({ items: z.array(StaffOfficerSchema) }));
 
 export type OfficerQueueItem = z.infer<typeof OfficerQueueItemSchema>;
 export type DispatchItem = z.infer<typeof DispatchItemSchema>;
 export type CaseActionResult = z.infer<typeof CaseActionResponseSchema>["data"];
 export type ResolutionResult = z.infer<typeof ResolutionResponseSchema>["data"];
 export type CaseDecision = z.infer<typeof DecisionSchema>;
+export type StaffOfficer = z.infer<typeof StaffOfficerSchema>;
 
 const parsers = {
   officerQueue: OfficerQueueResponseSchema,
@@ -104,6 +107,7 @@ const parsers = {
   programInputs: ProgramInputsResponseSchema,
   rule: RuleResponseSchema,
   assessment: AssessmentResponseSchema,
+  staffOfficers: StaffOfficersResponseSchema,
 };
 
 export function parseStaffResponse(value: unknown, parser: keyof typeof parsers) {
@@ -184,7 +188,8 @@ export function clearStaffMutationState(keys: Map<string, IdempotencyEntry>) {
 }
 
 export function getStaffApiMode(): StaffApiMode {
-  return process.env.NEXT_PUBLIC_SANAD_STAFF_MODE === "live" ? "live" : "fixture";
+  if (process.env.NEXT_PUBLIC_SANAD_STAFF_MODE === "fixture") return "fixture";
+  return "live";
 }
 
 export function getStaffModeLabel(mode: StaffApiMode) {
@@ -271,6 +276,11 @@ export function createStaffApi(keys = staffMutationKeys, mode = getStaffApiMode(
       if (limit !== undefined) params.set("limit", String(limit));
       if (sort) params.set("sort", sort);
       return parsers.dispatch.parse(await request(`admin/dispatch${params.size ? `?${params}` : ""}`, { method: "GET" }));
+    },
+    getStaffOfficers: async (departmentId: string) => {
+      if (mode === "fixture") return null;
+      const params = new URLSearchParams({ departmentId });
+      return parsers.staffOfficers.parse(await request(`admin/officers?${params}`, { method: "GET" })).data;
     },
     getCase: async (caseId: string) => {
       if (mode === "fixture") return null;
