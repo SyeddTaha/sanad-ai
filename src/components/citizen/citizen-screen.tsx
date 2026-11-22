@@ -127,19 +127,78 @@ function HomeScreen() {
 
 function VerifyScreen() {
   const { language } = useCitizenLanguage();
-  const { coordinator } = useCitizenSession();
+  const { coordinator, mutationKeys } = useCitizenSession();
   const text = (key: CitizenMessageKey) => citizenText(language, key);
   const [notice, setNotice] = useState("");
-  const [state, setState] = useState<"idle" | "empty" | "disconnected">("idle");
+  const [state, setState] = useState<"idle" | "empty" | "busy" | "success" | "error">("idle");
+  const [passport, setPassport] = useState<EvidencePassport | null>(null);
+  const [caseId, setCaseId] = useState("");
+  const [message, setMessage] = useState("");
 
   useEffect(() => coordinator.registerPrivateStateClearer(() => {
     setNotice("");
     setState("idle");
+    setPassport(null);
+    setCaseId("");
+    setMessage("");
   }), [coordinator]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setState(notice.trim() ? "disconnected" : "empty");
+    if (!notice.trim()) {
+      setState("empty");
+      return;
+    }
+    setState("busy");
+    setMessage("");
+    setPassport(null);
+    try {
+      await citizenApi.getSession();
+      const created = await coordinator.runRequest((signal) => citizenApi.createDraft(mutationKeys, signal));
+      if (created.status !== "current") return;
+      created.value.retire();
+      const draftResult = await coordinator.runRequest((signal) => citizenApi.getDraft(created.value.data.caseId, signal));
+      if (draftResult.status !== "current") return;
+      const saved = await coordinator.runRequest((signal) => citizenApi.saveDraft(
+        draftResult.value.caseId,
+        {
+          expectedVersion: draftResult.value.version,
+          noticeToken: notice.trim(),
+          messageText: null,
+          disputeText: null,
+          relatedCaseId: null,
+        },
+        mutationKeys,
+        signal,
+      ));
+      if (saved.status !== "current") return;
+      saved.value.retire();
+      setCaseId(saved.value.data.caseId);
+      const submitted = await coordinator.runRequest((signal) => citizenApi.submitCase(
+        saved.value.data.caseId,
+        saved.value.data.version,
+        mutationKeys,
+        signal,
+      ));
+      if (submitted.status !== "current") return;
+      submitted.value.retire();
+      const assessment = await coordinator.runRequest((signal) => citizenApi.createAssessment(
+        submitted.value.data.id,
+        submitted.value.data.evidenceVersion,
+        false,
+        mutationKeys,
+        signal,
+      ));
+      if (assessment.status !== "current") return;
+      assessment.value.retire();
+      const result = await coordinator.runRequest((signal) => citizenApi.getEvidencePassport(submitted.value.data.id, signal));
+      if (result.status !== "current") return;
+      setPassport(result.value);
+      setState("success");
+    } catch (error) {
+      setState("error");
+      setMessage(error instanceof CitizenApiError ? `Error: ${error.code}` : text("failedState"));
+    }
   }
 
   return (
@@ -163,10 +222,39 @@ function VerifyScreen() {
           <p className="citizen-field-help" id="notice-help">{text("noticeFieldHelp")}</p>
           <div aria-live="assertive" className="citizen-form-message" role={state === "idle" ? undefined : "alert"}>
             {state === "empty" ? text("emptyNotice") : null}
-            {state === "disconnected" ? text("unavailableNotice") : null}
+            {state === "busy" ? text("savingState") : null}
+            {state === "error" ? message : null}
           </div>
-          <button className="citizen-button citizen-button-primary" type="submit">{text("checkNotice")}</button>
+          <button className="citizen-button citizen-button-primary" disabled={state === "busy"} type="submit">
+            {state === "busy" ? text("savingState") : text("checkNotice")}
+          </button>
         </form>
+
+        {passport ? (
+          <section className="citizen-section" aria-label={text("passportTitle")}>
+            <h2>{text("passportTitle")}</h2>
+            <p>{language === "ur" ? "کیس آئی ڈی" : "Case ID"}: {caseId}</p>
+            <dl className="citizen-evidence-passport-list">
+              {formatEvidenceFindings(passport).map((finding) => (
+                <div key={finding.key}>
+                  <dt>{finding.key === "recipientMatch" ? text("passportRecipientMatch") : text(({
+                    signature: "passportSignature",
+                    expiry: "passportExpiry",
+                    revocation: "passportRevocation",
+                    payment: "passportPayment",
+                    eligibility: "passportEligibility",
+                  } as const)[finding.key as "signature" | "expiry" | "revocation" | "payment" | "eligibility"])}</dt>
+                  <dd>
+                    <strong>{finding.result}</strong>
+                    {finding.reasonCodes.length ? <span> — {finding.reasonCodes.join(", ")}</span> : null}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <p>{text("evidenceImportant")}</p>
+            <Link className="citizen-button citizen-button-outline" href="/citizen/case">{text("trackAction")}</Link>
+          </section>
+        ) : null}
 
         <aside aria-labelledby="citizen-qr-title" className="citizen-future-feature">
           <h2 id="citizen-qr-title">{text("qrHeading")}</h2>
