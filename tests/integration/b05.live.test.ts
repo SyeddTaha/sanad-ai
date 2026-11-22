@@ -127,8 +127,15 @@ test("B05 live scoped public API and credential lifecycle", async (t) => {
       await denied(`/cases/${caseId}`,officer.key,403,"CONSENT_REQUIRED");
       await denied(`/cases/${caseId}`,admin.key,403,"INSUFFICIENT_SCOPE");
       const assigned=await data(`/cases/${caseId}/assign`,{key:admin.key},{expectedVersion:current.version,departmentId,officerId:ids.get("OFFICER"),reason:"Synthetic B05 dispatch"});
-      const queue=await data("/cases",{key:officer.key});
-      assert.ok(queue.items.some((item:{caseId:string})=>item.caseId===caseId));
+      let cursor: string | null = null;
+      let queued = false;
+      for (let page = 0; page < 20; page++) {
+        const queue = await data("/cases?limit=100" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""), {key:officer.key});
+        queued = queue.items.some((item:{caseId:string})=>item.caseId===caseId);
+        cursor = queue.nextCursor;
+        if (queued || !cursor) break;
+      }
+      assert.ok(queued,"Assigned synthetic Case appears through authorized queue pagination");
       const review=(await data(`/cases/${caseId}/start-review`,{key:officer.key},{expectedVersion:assigned.version})).case;
       const escalated=(await data(`/cases/${caseId}/escalate`,{key:officer.key},{expectedVersion:review.version,reason:"Synthetic escalation; payment remains unknown"})).case;
       const ruleResponse=await call("/rules/current",{actor:"ADMIN"});
