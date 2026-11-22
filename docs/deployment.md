@@ -63,6 +63,7 @@ staff-mode flag below.
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser. Publishable key only. |
 | `SUPABASE_STRING` | Server only. PostgreSQL URI used by B02–B05 authorization transactions, Cases, rules, audit reads and API keys. Configure a host-reachable endpoint. |
 | `SUPABASE_DB_CA_FILE` | Server only, if required by the database certificate chain. A path readable in the deployed filesystem to the trusted CA certificate; a workstation path will not work on Vercel. |
+| `SUPABASE_DB_CA_PEM` | Server only. Trusted CA PEM contents for hosted SQL; takes precedence over `SUPABASE_DB_CA_FILE`. Store as a Vercel secret, without disabling certificate verification. |
 | `NEXT_PUBLIC_SANAD_STAFF_MODE` | Build time: `live` to call the real staff APIs. Omission selects the explicitly labeled fixture demonstration. |
 
 The citizen prototype routes and `/login` render without these variables. Sign-in
