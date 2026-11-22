@@ -232,7 +232,6 @@ function DisputeScreen() {
   const { language } = useCitizenLanguage();
   const { coordinator, mutationKeys } = useCitizenSession();
   const text = (key: CitizenMessageKey) => citizenText(language, key);
-  const [submitted, setSubmitted] = useState(false);
   const [reason, setReason] = useState("");
   const [evidence, setEvidence] = useState("");
   const [caseId, setCaseId] = useState("");
@@ -243,7 +242,6 @@ function DisputeScreen() {
   useEffect(() => coordinator.registerPrivateStateClearer(() => {
     setReason("");
     setEvidence("");
-    setSubmitted(false);
     setCaseId("");
     setDraft(null);
     setLiveMessage("");
@@ -251,7 +249,6 @@ function DisputeScreen() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    setSubmitted(false);
     setLiveMessage("");
     try {
       await citizenApi.getSession();
@@ -289,24 +286,6 @@ function DisputeScreen() {
       setDraft(saved.value.data);
       setCaseId(saved.value.data.caseId);
 
-      if (evidence.trim()) {
-        const added = await coordinator.runRequest((signal) => citizenApi.addEvidence(
-          saved.value.data.caseId,
-          {
-            kind: "CITIZEN_STATEMENT",
-            expectedVersion: saved.value.data.evidenceVersion,
-            supersedesId: null,
-            content: { text: evidence.trim() },
-          },
-          mutationKeys,
-          signal,
-        ));
-        if (added.status === "stale") return;
-        added.value.retire();
-        const refreshed = await coordinator.runRequest((signal) => citizenApi.getDraft(saved.value.data.caseId, signal));
-        if (refreshed.status === "current") setDraft(refreshed.value);
-      }
-
       const submittedCase = await coordinator.runRequest((signal) => citizenApi.submitCase(
         saved.value.data.caseId,
         saved.value.data.version,
@@ -315,10 +294,8 @@ function DisputeScreen() {
       ));
       if (submittedCase.status === "stale") return;
       submittedCase.value.retire();
-      setSubmitted(true);
       setLiveMessage(`${language === "ur" ? "کیس جمع ہو گیا" : "Case submitted"}: ${submittedCase.value.data.id}`);
     } catch (error) {
-      setSubmitted(false);
       setLiveMessage(error instanceof CitizenApiError
         ? `${language === "ur" ? "خرابی" : "Error"}: ${error.code}`
         : text("failedState"));
@@ -365,9 +342,6 @@ function DisputeScreen() {
           <p className="citizen-privacy-note">{text("privacyNotice")}</p>
           <button className="citizen-button citizen-button-primary" disabled={busy} type="submit">{busy ? text("savingState") : text("submitDispute")}</button>
           {liveMessage ? <p aria-live="polite" role="status">{liveMessage}</p> : null}
-          {submitted ? (
-            <p aria-live="assertive" className="citizen-error-message" role="alert">{text("failedMessage")}</p>
-          ) : null}
         </form>
         <SubmissionStates />
       </div>
@@ -393,7 +367,7 @@ const caseStatusCopy: Record<CaseStatus, CitizenMessageKey> = {
 
 function CaseScreen() {
   const { language } = useCitizenLanguage();
-  const { coordinator } = useCitizenSession();
+  const { coordinator, mutationKeys } = useCitizenSession();
   const text = (key: CitizenMessageKey) => citizenText(language, key);
   const casePreview = syntheticCitizenViewAdapter.getCasePreview();
   const [caseId, setCaseId] = useState("");
@@ -416,15 +390,34 @@ function CaseScreen() {
     setMessage("");
     try {
       await citizenApi.getSession();
-      const [detail, events, evidence] = await Promise.all([
+      const [detail, events] = await Promise.all([
         coordinator.runRequest((signal) => citizenApi.getCase(caseId, signal)),
         coordinator.runRequest((signal) => citizenApi.getHistory(caseId, null, signal)),
-        coordinator.runRequest((signal) => citizenApi.getEvidencePassport(caseId, signal)),
       ]);
-      if (detail.status !== "current" || events.status !== "current" || evidence.status !== "current") return;
+      if (detail.status !== "current" || events.status !== "current") return;
+      let evidence: EvidencePassport;
+      try {
+        const existing = await coordinator.runRequest((signal) => citizenApi.getEvidencePassport(caseId, signal));
+        if (existing.status !== "current") return;
+        evidence = existing.value;
+      } catch (error) {
+        if (!(error instanceof CitizenApiError) || error.code !== "NOT_FOUND") throw error;
+        const assessment = await coordinator.runRequest((signal) => citizenApi.createAssessment(
+          caseId,
+          detail.value.evidenceVersion,
+          false,
+          mutationKeys,
+          signal,
+        ));
+        if (assessment.status !== "current") return;
+        assessment.value.retire();
+        const generated = await coordinator.runRequest((signal) => citizenApi.getEvidencePassport(caseId, signal));
+        if (generated.status !== "current") return;
+        evidence = generated.value;
+      }
       setCaseItem(detail.value);
       setHistory(events.value.items.map((item) => ({ id: item.id, action: item.action, createdAt: item.createdAt })));
-      setPassport(evidence.value);
+      setPassport(evidence);
     } catch (error) {
       setMessage(error instanceof CitizenApiError ? `Error: ${error.code}` : text("failedState"));
     } finally {

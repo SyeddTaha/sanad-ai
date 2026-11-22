@@ -259,6 +259,19 @@
   border-radius: 50%;
 }
 
+.citizen-connection-note.is-connected {
+  border-inline-start-color: var(--citizen-jade);
+}
+
+.citizen-connection-note.is-connected strong {
+  color: var(--citizen-jade-dark);
+}
+
+.citizen-connection-note.is-connected .citizen-connection-mark {
+  border-color: var(--citizen-jade);
+  background: var(--citizen-jade);
+}
+
 .citizen-main {
   width: min(100% - 2.5rem, 74rem);
   margin: 0 auto;

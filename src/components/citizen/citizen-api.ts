@@ -117,7 +117,15 @@ async function request<T>(
 }
 
 export async function getCitizenSession(signal?: AbortSignal) {
-  const context = await session();
+  let context: Awaited<ReturnType<typeof session>>;
+  try {
+    context = await session();
+  } catch (error) {
+    if (error instanceof Error && ["UNAUTHENTICATED", "FORBIDDEN", "SERVICE_UNAVAILABLE"].includes(error.message)) {
+      throw new CitizenApiError(error.message, error.message === "SERVICE_UNAVAILABLE");
+    }
+    throw new CitizenApiError("SERVICE_UNAVAILABLE", true);
+  }
   if (!context.principal.roles.includes("CITIZEN")) throw new CitizenApiError("FORBIDDEN");
   void signal;
   return context;

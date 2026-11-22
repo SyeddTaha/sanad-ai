@@ -12,8 +12,10 @@ import {
   endCitizenSession,
   startNewCitizenSession,
 } from "./citizen-session";
-import { CitizenMutationKeys } from "./citizen-api";
+import { CitizenApiError, CitizenMutationKeys, citizenApi } from "./citizen-api";
 import { logout } from "@/lib/auth/browser";
+
+type CitizenConnection = "checking" | "connected" | "signed-out" | "unavailable" | "wrong-role";
 
 export function CitizenShell({ children }: { children: ReactNode }) {
   const [languageController] = useState(() => new CitizenLanguageController());
@@ -24,6 +26,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   );
   const { coordinator, generation } = session;
   const [switchAnnouncement, setSwitchAnnouncement] = useState("");
+  const [connection, setConnection] = useState<CitizenConnection>("checking");
   const language = useSyncExternalStore(
     languageController.subscribe,
     languageController.getSnapshot,
@@ -41,11 +44,31 @@ export function CitizenShell({ children }: { children: ReactNode }) {
   useEffect(() => coordinator.registerAudioStopper(() => audioGuidance.stop()), [coordinator, audioGuidance]);
 
   useEffect(() => {
+    let active = true;
+    const checkConnection = async () => {
+      try {
+        await citizenApi.getSession();
+        if (active) setConnection("connected");
+      } catch (error) {
+        if (!active) return;
+        setConnection(error instanceof CitizenApiError && error.code === "FORBIDDEN"
+          ? "wrong-role"
+          : error instanceof CitizenApiError && error.code === "UNAUTHENTICATED"
+            ? "signed-out"
+            : "unavailable");
+      }
+    };
+    void checkConnection();
+    return () => { active = false; };
+  }, [coordinator]);
+
+  useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = language === "ur" ? "rtl" : "ltr";
   }, [language]);
 
   const handleEndSession = async () => {
+    setConnection("signed-out");
     mutationKeys.clear();
     endCitizenSession({
       session: coordinator,
@@ -72,6 +95,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
     if (nextSession === session) return;
 
     setSession(nextSession);
+    setConnection("signed-out");
     mutationKeys.clear();
     setMutationKeys(new CitizenMutationKeys());
     setAudioGuidance(new CitizenUrduAudioGuidance(createBrowserSpeechOutput()));
@@ -156,11 +180,12 @@ export function CitizenShell({ children }: { children: ReactNode }) {
             <div aria-live="polite" className="citizen-switch-announcement" role="status">
               {switchAnnouncement}
             </div>
-            <div aria-live="polite" className="citizen-connection-note" role="status">
+            <div aria-live="polite" className={`citizen-connection-note${connection === "connected" ? " is-connected" : ""}`} role="status">
               <span aria-hidden="true" className="citizen-connection-mark" />
               <div>
-                <strong>{text("disconnectedTitle")}</strong>
-                <span>{text("disconnectedBody")}</span>
+                <strong>{text(connection === "connected" ? "connectedTitle" : connection === "checking" ? "connectionChecking" : connection === "unavailable" ? "connectionUnavailable" : connection === "wrong-role" ? "connectionWrongRole" : "disconnectedTitle")}</strong>
+                <span>{text(connection === "connected" ? "connectedBody" : connection === "checking" ? "connectionCheckingBody" : connection === "unavailable" ? "connectionUnavailableBody" : connection === "wrong-role" ? "connectionWrongRoleBody" : "disconnectedBody")}</span>
+                {connection === "signed-out" ? <Link href="/login">{text("signIn")}</Link> : null}
               </div>
             </div>
 
