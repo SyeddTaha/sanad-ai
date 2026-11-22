@@ -191,6 +191,10 @@ export function getStaffApiMode(): StaffApiMode {
   return "live";
 }
 
+export function isStaffNotFoundError(cause: unknown): cause is StaffApiError {
+  return cause instanceof StaffApiError && cause.code === "NOT_FOUND";
+}
+
 export function getStaffModeLabel(mode: StaffApiMode) {
   return mode === "live"
     ? "Live configuration: server reachability and permissions are verified per request"

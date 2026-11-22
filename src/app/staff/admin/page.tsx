@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createStaffApi } from "@/lib/staff-api";
+import { createStaffApi, isStaffNotFoundError } from "@/lib/staff-api";
 import type { DispatchItem } from "@/lib/staff-api";
 import { session } from "@/lib/auth/browser";
 import type { StaffOfficer } from "@/lib/staff-api";
@@ -22,7 +22,11 @@ export default function AdminPage() {
   useEffect(() => {
     let active = true;
     const api = createStaffApi();
-    Promise.all([api.mode === "live" ? session() : Promise.resolve(null), api.getDispatch(), api.getRule()]).then(([context, dispatch, rule]) => {
+    const rule = api.getRule().catch((cause) => {
+      if (isStaffNotFoundError(cause)) return null;
+      throw cause;
+    });
+    Promise.all([api.mode === "live" ? session() : Promise.resolve(null), api.getDispatch(), rule]).then(([context, dispatch, rule]) => {
       if (!active) return;
       setItems(dispatch?.data.items ?? []);
       setDepartmentIds(context?.departmentIds ?? []);

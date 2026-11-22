@@ -13,7 +13,14 @@ import {
   getStaffModeLabel,
   isLiveResolutionAvailable,
   isLiveAssessmentFresh,
+  isStaffNotFoundError,
 } from "./staff-api";
+
+test("identifies the rule 404 as an optional not-published state", () => {
+  assert.equal(isStaffNotFoundError(new StaffApiError("NOT_FOUND", "resource.not_found", false)), true);
+  assert.equal(isStaffNotFoundError(new StaffApiError("FORBIDDEN", "authorization.denied", false)), false);
+  assert.equal(isStaffNotFoundError(new Error("network")), false);
+});
 
 test("creates and reuses one idempotency key for a logical mutation", () => {
   const keys = new Map();

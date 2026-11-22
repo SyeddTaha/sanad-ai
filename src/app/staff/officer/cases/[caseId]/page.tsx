@@ -86,6 +86,8 @@ export default function OfficerCasePage() {
       setAssessmentId("");
       setAssessmentEvidenceVersion(null);
       setAssessment(null);
+      const refreshedDecisions = await api.getDecisions(caseId);
+      setDecisions(refreshedDecisions?.items ?? []);
       setMessage(`${action} completed.`);
     } catch (cause) {
       setError(cause instanceof StaffApiError ? `${cause.code}: ${cause.messageKey}` : cause instanceof Error ? cause.message : "Workflow action failed");

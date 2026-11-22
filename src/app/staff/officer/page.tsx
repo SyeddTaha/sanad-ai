@@ -35,14 +35,14 @@ export default function OfficerQueuePage() {
       </header>
       <label className="block text-sm">
         Status
-        <select className="mt-1 block rounded border border-slate-300 bg-white px-3 py-2" value={status} onChange={(event) => { setLoading(true); setCursor(""); setStatus(event.target.value); }}>
+        <select className="mt-1 block rounded border border-slate-300 bg-white px-3 py-2" value={status} onChange={(event) => { setError(""); setLoading(true); setCursor(""); setStatus(event.target.value); }}>
           <option value="">All statuses</option>
           {["SUBMITTED", "UNDER_REVIEW", "NEEDS_EVIDENCE", "PENDING_CONSENT", "RESOLVED", "CLOSED"].map((value) => <option key={value}>{value}</option>)}
         </select>
       </label>
       <label className="block text-sm">
         Sort
-        <select className="mt-1 block rounded border border-slate-300 bg-white px-3 py-2" value={sort} onChange={(event) => { setLoading(true); setCursor(""); setSort(event.target.value as "priority" | "confidence" | "oldest"); }}>
+        <select className="mt-1 block rounded border border-slate-300 bg-white px-3 py-2" value={sort} onChange={(event) => { setError(""); setLoading(true); setCursor(""); setSort(event.target.value as "priority" | "confidence" | "oldest"); }}>
           <option value="priority">Priority</option>
           <option value="confidence">Confidence</option>
           <option value="oldest">Oldest</option>
@@ -71,7 +71,7 @@ export default function OfficerQueuePage() {
           </table>
         </div>
       )}
-      {nextCursor && <button className="rounded border border-slate-300 bg-white px-3 py-2 text-sm" onClick={() => { setLoading(true); setCursor(nextCursor); }}>Load next page</button>}
+      {nextCursor && <button className="rounded border border-slate-300 bg-white px-3 py-2 text-sm" onClick={() => { setError(""); setLoading(true); setCursor(nextCursor); }}>Load next page</button>}
     </div>
   );
 }
