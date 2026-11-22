@@ -25,6 +25,10 @@ pending checks below are not passing claims.
 | B01 live regression | 12 passed, no failures/skips on the rebuilt server. First run exposed stale migration-count and pre-B04 Admin membership expectations; assertions now verify required migrations and approved seed membership. |
 | B02 live regression | 8 passed, no failures/skips; both consent withdrawal/write orderings observed. |
 | B03 live regression | 12 passed, no failures/skips; real draft/submission/evidence/Assessment history, stale writes, consent replay denial, atomic audit rollback and direct-client privacy passed. |
+| GitHub CI | Passed on implementation/fix commit `ec18ff9`: [CI run 44970748689](https://github.com/SyeddTaha/sanad-ai/actions/runs/44970748689). |
+| B04 first live run | First 11 scenarios passed, including stale evidence/rules, withdrawal, both publication lock orderings, competing resolutions and audit rollback. The last two failed: a concurrent B04 process on localhost:3400 published shared development rules during the happy path (`STALE_ASSESSMENT`), and a repeated fixed department name collided. |
+| B04 focused rechecks | Happy resolution/close/withdrawal and reassignment/restored-sharing each passed after diagnosis (3 tests passed, 11 unrelated tests explicitly skipped per selected run). Department names now include their synthetic UUID; application freshness guards are unchanged. Clean uncontended full rerun pending. |
+| Actual curl runner | Five real curl requests produced 201 issuance, 200 authorized read, 403 INSUFFICIENT_SCOPE, 200 revocation, 401 INVALID_API_KEY. Runner exited 0 after replacing unsupported top-level await and synchronous child execution; credentials stay in memory/stdin. Final contract-validation version is rechecked in the final run. |
 
 ## Pending before B05 gate
 

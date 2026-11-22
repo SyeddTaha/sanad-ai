@@ -95,6 +95,7 @@ test("only the issuing human can revoke; revocation immediately rejects a previo
   const revoked = await handleApiKeys(request(3, {}), "revoke", issued.credential.id, dependencies(3));
   assert.equal(revoked.status, 200);
   assert.ok((await revoked.json()).data.revokedAt);
+  assert.equal((await handleApiKeys(request(3, {}), "revoke", issued.credential.id, dependencies(3))).status, 200);
   const denied = await handleCase(apiRequest(issued.key), "draft-read", caseId, dependencies(3));
   assert.equal(denied.status, 401);
   assert.equal(ApiErrorEnvelopeSchema.parse(await denied.json()).error.code, "INVALID_API_KEY");
