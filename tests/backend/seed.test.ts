@@ -42,6 +42,7 @@ test("synthetic setup provisions every role and two citizens without duplicating
       "20261121000800_published_rules.sql", "20261121000900_officer_decisions.sql",
       "20261121001000_synthetic_program_inputs.sql",
       "20261122001100_scoped_api_keys.sql",
+      "20261122001200_trusted_registry.sql",
     ]);
     assert.deepEqual(await applyMigrations(sql), []);
     const passwords = Object.fromEntries(["CITIZEN_A", "CITIZEN_B", "HELPER", "OFFICER", "ADMIN", "AUDITOR"]

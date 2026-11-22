@@ -193,3 +193,48 @@ Zero introduced functional mismatches or scope creep. The reviewer required live
 | Deployment | Entry fix not on supplied URL | Review and deploy the feature change through normal protected merge/release; rerun entry smoke. |
 
 The release gate remains **FAIL** even if all local backend suites pass. Stop at this verification gate: no merge to main, production deployment, submission, or assertion of release approval is performed by this audit.
+
+## Recovery update — 22 November 2026, 12:55 PKT
+
+Recovery continues on `feat/final-integration`; the original `feat/public-api`
+checkout remains untouched. The root cause was confirmed in two stages:
+Vercel initially had no `SUPABASE_STRING`; after adding the configured direct
+connection, Vercel logged `ENOTFOUND`. The configured Supabase direct endpoint
+is IPv6-only and not reachable from this Vercel runtime. The owner supplied the
+project's transaction-pooler hostname; a local connection to that IPv4 endpoint
+using its supplied database username, retained password and trusted CA reached
+the expected `postgres` database and all B01–B05 plus registry tables. No secret
+values are recorded here. The new registry migration was applied to the
+development database. The Vercel environment now has server-only
+`SUPABASE_STRING` and `SUPABASE_DB_CA_PEM`, with certificate verification
+enabled. The currently aliased production deployment still returns 503 for
+unknown API key, Officer queue and Admin dispatch. Current request logs confirm
+those 503s on the active alias, but current runtime logs have no matching SQL
+error; deployment-level SQL behavior is therefore **FAIL / unresolved**, not
+fixed. See `verification/recovery-public-http.jsonl` for the captured smoke.
+
+The Assessment route now snapshots under real B01–B05 authorization, releases
+locks before calling the existing AI adapter, and reauthorizes consent plus
+evidence, Case, published-rule, program-input and registry versions before
+immutable persistence. It uses the existing A02 verifier with append-only,
+server-owned synthetic issuer/key/revocation records; no notice-supplied trust
+data is accepted. Provider output only supplies advisory AI metadata. Payment
+stays UNKNOWN, and AI claims do not change findings or authorize a Case.
+Officer resolution recomputes deterministic facts without an external call.
+This does not provide the three required mock REST services, payment lookup,
+identity resolution, contradiction checks, or full AI trace fields absent from
+the frozen v1 contract.
+
+Recovery-specific checks observed so far: focused orchestration and Case tests
+**PASS 20/20**; new SQL configuration tests **PASS 2/2**; contract tests
+**PASS 25/25**; `npm run typecheck`, `npm run lint`, and production build
+**PASS**; local full HTTP smoke against the previous built image **PASS 16/16**.
+The fresh full offline backend rerun first reported **89/90**, because its
+expected migration list did not yet include the new registry migration; after
+correcting that expectation, it passed **90/90**. `npm run test:contracts`
+passed **25/25** and lint passed on the recovery source.
+The current public smoke remains **FAIL 12/16**: root, API-key rejection and
+both staff queue probes fail. Citizen/helper and staff browser integrations,
+PR #16, live-provider evaluation, Urdu/weak-network acceptance, monitoring,
+measured risk evaluation and demo-video verification remain unclosed. PR #18
+remains draft. This update does not approve production release.

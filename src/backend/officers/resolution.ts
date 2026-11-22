@@ -23,7 +23,7 @@ export async function resolveCase(tx: Transaction, previous: Record<string,unkno
   if (!rule) throw new AuthFailure("STALE_ASSESSMENT");
   const reviewed=await assessmentRecord(tx,caseId,input.reviewedAssessmentId);
   if (reviewed.ruleVersionId !== rule.id || reviewed.evidenceVersion !== previous.evidence_version) throw new AuthFailure("STALE_ASSESSMENT");
-  const saved=await createAssessment(tx,caseId,Number(previous.evidence_version),false);
+  const saved=await createAssessment(tx,caseId,Number(previous.evidence_version));
   const final=await assessmentRecord(tx,caseId,saved.assessmentId);
   if (deterministicBasis(reviewed) !== deterministicBasis(final)) throw new AuthFailure("STALE_ASSESSMENT");
   await tx.db.query("update public.cases set status='RESOLVED' where id=$1",[caseId]);
