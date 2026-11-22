@@ -147,6 +147,18 @@
   opacity: 1;
 }
 
+.citizen-root input,
+.citizen-root select {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid var(--citizen-line);
+  border-radius: 0.3rem;
+  background: var(--citizen-white);
+  color: var(--citizen-ink);
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+}
+
 .citizen-button-language {
   border-color: #9db8ae;
   background: transparent;
