@@ -18,6 +18,8 @@
     "test:b02:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b02.live.test.ts",
     "test:b03:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b03.live.test.ts",
     "test:b04:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b04.live.test.ts",
+    "test:b05:live": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx --test tests/integration/b05.live.test.ts",
+    "demo:b05": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --conditions=react-server --import tsx scripts/demo-public-api.ts",
     "test:ai-trust": "node --env-file-if-exists=.env.local --import tsx --test spikes/ai-trust/crypto/*.test.ts spikes/ai-trust/ai/*.test.ts"
   },
   "dependencies": {
@@ -31,6 +33,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^13.1.0",
     "@electric-sql/pglite": "^0.5.17",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^20",

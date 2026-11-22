@@ -229,8 +229,9 @@ test("B04 live officer workflow, published rules and transactional resolution",a
       const {caseId,body,grant}=await workflow();
       const key=crypto.randomUUID();
       const first=await call(`/cases/${caseId}/resolve`,"OFFICER",body,key);
-      assert.equal(first.status,200);
-      const result=ResolutionResponseSchema.parse(await first.json()).data;
+      const firstBody=await first.json();
+      assert.equal(first.status,200,firstBody.error?.code ?? "Resolution HTTP status");
+      const result=ResolutionResponseSchema.parse(firstBody).data;
       assert.deepEqual((await (await call(`/cases/${caseId}/resolve`,"OFFICER",body,key)).json()).data,result);
       assert.equal((await data(`/cases/${caseId}/close`,"OFFICER",{expectedVersion:result.case.version})).case.status,"CLOSED");
       const decisions=CaseDecisionsResponseSchema.parse(await (await call(`/cases/${caseId}/decisions`,"OFFICER")).json()).data;
@@ -243,7 +244,7 @@ test("B04 live officer workflow, published rules and transactional resolution",a
     await scenario("dispatch-only reassignment interrupts review and restored sharing enables resolution",async()=>{
       const {caseId,record}=await workflow();
       const targetDepartment=crypto.randomUUID();
-      await db.query("insert into public.departments(id,name) values($1,'Synthetic dispatch-only department')",[targetDepartment]);
+      await db.query("insert into public.departments(id,name) values($1,$2)",[targetDepartment,"Synthetic dispatch-only department "+targetDepartment]);
       for(const actor of ["ADMIN","OFFICER"]) await db.query("insert into public.department_memberships(profile_id,department_id) values($1,$2)",[ids.get(actor),targetDepartment]);
       try {
         await data(`/cases/${caseId}/consents`,"CITIZEN_A",{recipientType:"DEPARTMENT",recipientId:targetDepartment,purpose:"synthetic_department_review",actions:["ASSIGN_CASE"],expiresAt:new Date(Date.now()+3600000).toISOString()},201);

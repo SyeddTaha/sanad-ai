@@ -29,8 +29,10 @@ test("B01 live Supabase/PostgreSQL/HTTP acceptance", async (t) => {
   try {
     await t.test("database connects and applied migrations are current on repeat", async () => {
       assert.deepEqual(await applyMigrations(db), []);
-      const { rows } = await db.query("select count(*)::int as count from sanad_private.migrations");
-      assert.equal(rows[0].count, 3);
+      const { rows } = await db.query("select name from sanad_private.migrations");
+      for (const name of ["20261121000100_backend_foundation.sql", "20261121000200_session_expiry.sql", "20261121000300_rbac_consent.sql"]) {
+        assert.ok(rows.some(row => row.name === name), "Required foundation migration: " + name);
+      }
     });
     await t.test("all five roles and two citizens provision idempotently against real Auth and PostgreSQL", async () => {
       accounts = await provisionDemoAccounts(clients.server.auth.admin, db);
@@ -50,7 +52,7 @@ test("B01 live Supabase/PostgreSQL/HTTP acceptance", async (t) => {
         assert.equal(data.principal.id, account.id);
         assert.deepEqual(data.principal.roles, [account.role]);
         assert.equal(data.principal.active, true);
-        assert.equal(data.departmentIds.length, account.role === "OFFICER" ? 1 : 0);
+        assert.equal(data.departmentIds.length, ["OFFICER", "ADMIN"].includes(account.role) ? 1 : 0);
         const cookie = response.headers.get("set-cookie") ?? "";
         assert.match(cookie, /HttpOnly/);
         assert.match(cookie, /SameSite=strict/);
