@@ -1,6 +1,30 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CitizenApiError, CitizenMutationKeys, citizenApi } from "./citizen-api";
+import { formatEvidenceFindings } from "./citizen-evidence";
+
+test("passport formatting exposes all six independent findings", () => {
+  const timestamp = "2026-11-22T11:23:01.263Z";
+  const findings = formatEvidenceFindings({
+    signature: { result: "VALID", reasonCodes: ["SIGNATURE_VALID"], sourceRefs: [], observedAt: timestamp },
+    expiry: { result: "CURRENT", reasonCodes: [], sourceRefs: [], observedAt: timestamp },
+    revocation: { result: "REVOKED", reasonCodes: ["NOTICE_REVOKED"], sourceRefs: [], observedAt: timestamp },
+    recipientMatch: { result: "MATCH", reasonCodes: [], sourceRefs: [], observedAt: timestamp },
+    payment: { result: "UNKNOWN", reasonCodes: ["SOURCE_UNAVAILABLE"], sourceRefs: [], observedAt: timestamp },
+    eligibility: { result: "UNKNOWN", reasonCodes: ["SOURCE_UNAVAILABLE"], sourceRefs: [], observedAt: timestamp },
+  });
+
+  assert.deepEqual(findings.map(({ key }) => key), [
+    "signature",
+    "expiry",
+    "revocation",
+    "recipientMatch",
+    "payment",
+    "eligibility",
+  ]);
+  assert.equal(findings.find(({ key }) => key === "payment")?.result, "UNKNOWN");
+  assert.deepEqual(findings.find(({ key }) => key === "payment")?.reasonCodes, ["SOURCE_UNAVAILABLE"]);
+});
 
 test("mutation keys reuse the same key and payload for ambiguous retry", () => {
   const keys = new CitizenMutationKeys();

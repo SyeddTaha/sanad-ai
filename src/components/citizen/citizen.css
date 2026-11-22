@@ -543,6 +543,36 @@
   border-block-start: 2px solid var(--citizen-ink);
 }
 
+.citizen-evidence-passport-list {
+  display: grid;
+  margin: 1rem 0 0;
+  border-block-start: 1px solid var(--citizen-line);
+}
+
+.citizen-evidence-passport-list > div {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.35fr) minmax(0, 1fr);
+  gap: 1rem;
+  border-block-end: 1px solid var(--citizen-line);
+  padding: 0.85rem 0.25rem;
+}
+
+.citizen-evidence-passport-list dt {
+  font-weight: 800;
+}
+
+.citizen-evidence-passport-list dd,
+.citizen-evidence-passport-list dd small {
+  display: block;
+  margin: 0;
+}
+
+.citizen-evidence-passport-list dd small {
+  margin-block-start: 0.25rem;
+  color: var(--citizen-muted);
+  overflow-wrap: anywhere;
+}
+
 .citizen-finding-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -894,6 +924,11 @@
   .citizen-main {
     width: min(100% - 2rem, 74rem);
     padding-block: 1.5rem 3rem;
+  }
+
+  .citizen-evidence-passport-list > div {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
   }
 
   .citizen-hero {

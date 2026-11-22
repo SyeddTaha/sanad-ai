@@ -14,6 +14,7 @@ import type { ConsentGrant } from "@/contracts/v1/consent";
 import type { CaseDraft } from "@/lib/case-contract";
 import type { EvidencePassport } from "@/contracts/v1/assessment";
 import type { CitizenAudioTopic } from "./citizen-narration";
+import { formatEvidenceFindings } from "./citizen-evidence";
 
 export type CitizenScreenName = "home" | "verify" | "results" | "dispute" | "case" | "consent";
 
@@ -459,10 +460,31 @@ function CaseScreen() {
       {passport ? (
         <section className="citizen-section" aria-label={language === "ur" ? "سرور شواہد" : "Server evidence passport"}>
           <h2>{language === "ur" ? "سرور شواہد" : "Server evidence passport"}</h2>
-          <p>Signature: {passport.signature.result}</p>
-          <p>Payment: {passport.payment.result}</p>
-          <p>Eligibility: {passport.eligibility.result}</p>
+          <dl className="citizen-evidence-passport-list">
+            {formatEvidenceFindings(passport).map((finding) => (
+              <div key={finding.key}>
+                <dt>{text(({
+                  signature: "passportSignature",
+                  expiry: "passportExpiry",
+                  revocation: "passportRevocation",
+                  recipientMatch: "passportRecipientMatch",
+                  payment: "passportPayment",
+                  eligibility: "passportEligibility",
+                } as const)[finding.key])}</dt>
+                <dd>
+                  <strong>{finding.result}</strong>
+                  {finding.reasonCodes.length > 0 ? <span> — {finding.reasonCodes.join(", ")}</span> : null}
+                  <small>{language === "ur" ? "دیکھا گیا" : "Observed"}: {finding.observedAt}</small>
+                  {finding.sourceRefs.length === 0 ? <small>{language === "ur" ? "کوئی لائیو سرویس مصدر دستیاب نہیں" : "No live source reference"}</small> : (
+                    <small>{finding.sourceRefs.map((source) => source.service).join(", ")}</small>
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p>{language === "ur" ? "AI حالت" : "AI status"}: {passport.ai.status}</p>
           {passport.missingEvidence.length > 0 ? <p>Missing evidence: {passport.missingEvidence.join(", ")}</p> : null}
+          <p>{text("evidenceImportant")}</p>
         </section>
       ) : null}
 
