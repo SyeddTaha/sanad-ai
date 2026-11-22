@@ -8,7 +8,7 @@ import { connectDatabase } from "../../scripts/database";
 import { ApiErrorEnvelopeSchema } from "../../src/contracts/v1";
 import { IssueApiKeyResponseSchema, ApiKeyListResponseSchema } from "../../src/lib/api-key-contract";
 
-const base = process.env.B05_BASE_URL ?? "http://localhost:3500";
+const base = process.env.B05_BASE_URL || "http://localhost:3500";
 const origin = new URL(base).origin;
 test("B05 live scoped public API and credential lifecycle", async (t) => {
   const db = await connectDatabase();
@@ -168,19 +168,18 @@ test("B05 live scoped public API and credential lifecycle", async (t) => {
       let revoke: Promise<Response> | undefined;
       try {
         const deadline=Date.now()+30000;
-        let blocked=false;
+        let writerPid: number | undefined;
         while(Date.now()<deadline){
           const {rows}=await observer.query("select pid from pg_stat_activity where $1::int=any(pg_blocking_pids(pid))",[connection.pid]);
-          if(rows.length){blocked=true;break;} await delay(40);
+          if(rows.length){writerPid=Number(rows[0].pid);break;} await delay(40);
         }
-        assert.ok(blocked,"protected writer reached the reservation barrier");
+        assert.ok(writerPid,"protected writer reached the reservation barrier");
         revoke=call(`/api-keys/${disposable.credential.id}/revoke`,{actor:"HELPER"},{});
         // Observe the revoker waiting on the credential row held by that protected request.
         let revokeBlocked=false;
         const revokeDeadline=Date.now()+10000;
         while(Date.now()<revokeDeadline){
-          const {rows}=await observer.query(`select pid from pg_stat_activity where cardinality(pg_blocking_pids(pid))>0
-            and query like 'select id,principal_id,name,to_json(scopes)%for update%'`);
+          const {rows}=await observer.query("select pid from pg_stat_activity where $1::int=any(pg_blocking_pids(pid))",[writerPid]);
           if(rows.length){revokeBlocked=true;break;} await delay(40);
         }
         assert.ok(revokeBlocked,"revocation waits for protected credential lock");

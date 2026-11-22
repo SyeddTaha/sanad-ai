@@ -15,7 +15,7 @@ function apiRequest(key: string, body?: unknown, headers: Record<string,string> 
 }
 async function issue(scopes: string[], actor = 3, expiresAt = new Date(Date.now() + 3600000).toISOString()) {
   const result = await handleApiKeys(request(actor, { name: "Synthetic test integration", scopes, expiresAt }), "issue", undefined, dependencies(actor));
-  assert.equal(result.status, 201, await result.clone().text());
+  assert.equal(result.status, 201, "Scoped credential issuance status");
   return (await result.json()).data;
 }
 async function sharedDraft() {
@@ -31,7 +31,7 @@ test("issuance returns a one-time secret, while retries and listing return only 
   const issued = await handleApiKeys(request(3, input, key), "issue", undefined, dependencies(3));
   assert.equal(issued.status, 201);
   const first = (await issued.json()).data;
-  assert.match(first.key, /^sanad_[A-Za-z0-9_-]{43}$/);
+  assert.ok(typeof first.key === "string" && /^sanad_[A-Za-z0-9_-]{43}$/.test(first.key), "Credential uses the documented random format");
   assert.equal(first.credential.principalId, "00000000-0000-4000-8000-000000000003");
   assert.deepEqual(first.credential.scopes, ["READ_CASE"]);
   const retry = await handleApiKeys(request(3, input, key), "issue", undefined, dependencies(3));
@@ -164,4 +164,19 @@ test("issuance rejects caller identity, invalid lifetimes, duplicate scopes and 
     {...body, expiresAt: new Date(Date.now()+31*86400000).toISOString()},
   ]) assert.equal((await handleApiKeys(request(3, input), "issue", undefined, dependencies(3))).status, 422);
   assert.equal((await handleApiKeys(request(1, body), "issue", undefined, dependencies(1))).status, 403);
+});
+
+test("an identical issuance retry after credential expiry still returns original metadata without the secret", async () => {
+  const expiresAt = new Date(Date.now()+1000).toISOString();
+  const body = { name: "Synthetic expired issuance retry", scopes: ["READ_CASE"], expiresAt };
+  const operationKey = crypto.randomUUID();
+  const first = await handleApiKeys(request(3,body,operationKey),"issue",undefined,dependencies(3));
+  assert.equal(first.status,201);
+  const original = (await first.json()).data.credential;
+  await new Promise(resolve => setTimeout(resolve,Math.max(0,Date.parse(expiresAt)+25-Date.now())));
+  const retry = await handleApiKeys(request(3,body,operationKey),"issue",undefined,dependencies(3));
+  assert.equal(retry.status,200);
+  const result = (await retry.json()).data;
+  assert.equal(result.key,null);
+  assert.deepEqual(result.credential,original);
 });

@@ -45,10 +45,10 @@ export async function handleApiKeys(request: NextRequest, operation: "issue" | "
       const issue = IssueApiKeyRequestSchema.parse(input);
       const permitted: readonly string[] = tx.identity.principal.roles.flatMap((role) => [...ApiKeyScopesByRole[role]]);
       if (!issue.scopes.every((scope) => permitted.includes(scope))) throw new AuthFailure("INSUFFICIENT_SCOPE");
-      const { rows: [clock] } = await tx.db.query("select clock_timestamp() as time");
-      const lifetime = Date.parse(issue.expiresAt) - new Date(clock.time as string).getTime();
-      if (lifetime <= 0 || lifetime > 30 * 86400000) throw new AuthFailure("VALIDATION_FAILED");
       return idempotent(tx, "api-key-issue", operationKey, issue, async () => {
+        const { rows: [clock] } = await tx.db.query("select clock_timestamp() as time");
+        const lifetime = Date.parse(issue.expiresAt) - new Date(clock.time as string).getTime();
+        if (lifetime <= 0 || lifetime > 30 * 86400000) throw new AuthFailure("VALIDATION_FAILED");
         const secret = "sanad_" + randomBytes(32).toString("base64url");
         const digest = createHash("sha256").update(secret).digest("hex");
         const { rows: [row] } = await tx.db.query(`insert into public.api_keys(principal_id,name,secret_hash,scopes,expires_at)

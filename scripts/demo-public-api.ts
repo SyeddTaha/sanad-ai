@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 
-const base = process.env.B05_BASE_URL ?? "http://localhost:3500";
+const base = process.env.B05_BASE_URL || "http://localhost:3500";
 const origin = new URL(base).origin;
 const cookies = new Map<string,string>();
 let credentialId: string | undefined;
