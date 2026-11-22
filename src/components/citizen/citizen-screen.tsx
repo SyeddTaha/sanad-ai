@@ -581,8 +581,10 @@ function CaseScreen() {
         <p>{text("workflowDescription")}</p>
         <ol className="citizen-timeline">
           {caseSteps.map(({ key, status }, index) => {
-            const current = status === casePreview.status;
-            const complete = index === 0;
+            const activeStatus = caseItem?.status ?? casePreview.status;
+            const activeIndex = caseSteps.findIndex((step) => step.status === activeStatus);
+            const current = status === activeStatus;
+            const complete = index < activeIndex;
             return (
               <li aria-current={current ? "step" : undefined} className={current ? "is-current" : ""} key={status}>
                 <span aria-hidden="true" className="citizen-timeline-marker">{complete ? "✓" : index + 1}</span>

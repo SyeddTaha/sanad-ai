@@ -108,6 +108,8 @@ export function CitizenShell({ children }: { children: ReactNode }) {
     { href: "/citizen", key: "navHome" },
     { href: "/citizen/verify", key: "navVerify" },
     { href: "/citizen/case", key: "navTrack" },
+    { href: "/citizen/dispute", key: "navDispute" },
+    { href: "/citizen/results", key: "navPassport" },
     { href: "/citizen/consent", key: "navConsent" },
   ] as const;
 
@@ -185,7 +187,9 @@ export function CitizenShell({ children }: { children: ReactNode }) {
               <div>
                 <strong>{text(connection === "connected" ? "connectedTitle" : connection === "checking" ? "connectionChecking" : connection === "unavailable" ? "connectionUnavailable" : connection === "wrong-role" ? "connectionWrongRole" : "disconnectedTitle")}</strong>
                 <span>{text(connection === "connected" ? "connectedBody" : connection === "checking" ? "connectionCheckingBody" : connection === "unavailable" ? "connectionUnavailableBody" : connection === "wrong-role" ? "connectionWrongRoleBody" : "disconnectedBody")}</span>
-                {connection === "signed-out" ? <Link href="/login">{text("signIn")}</Link> : null}
+                {connection === "signed-out" || connection === "wrong-role"
+                  ? <Link href="/login">{text("signIn")}</Link>
+                  : null}
               </div>
             </div>
 
